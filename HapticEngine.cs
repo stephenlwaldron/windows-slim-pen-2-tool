@@ -53,6 +53,9 @@ public class HapticEngine : IDisposable
     [DllImport("hid.dll", SetLastError = true)]
     private static extern bool HidD_GetFeature(SafeFileHandle device, byte[] buf, int len);
 
+    [DllImport("hid.dll")]
+    private static extern int HidP_GetCaps(IntPtr preparsedData, out HidpCaps caps);
+
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern SafeFileHandle CreateFile(
         string lpFileName, uint dwDesiredAccess, uint dwShareMode,
@@ -94,6 +97,18 @@ public class HapticEngine : IDisposable
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    private struct HidpCaps
+    {
+        public ushort Usage;
+        public ushort UsagePage;
+        public ushort InputReportByteLength;
+        public ushort OutputReportByteLength;
+        public ushort FeatureReportByteLength;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 27)]
+        public ushort[] Reserved;   // reserved words + cap counts, unused here
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     private struct SP_DEVICE_INTERFACE_DATA
     {
         public uint   cbSize;
@@ -119,7 +134,12 @@ public class HapticEngine : IDisposable
     private const uint FILE_SHARE_READ       = 0x01;
     private const uint FILE_SHARE_WRITE      = 0x02;
     private const uint OPEN_EXISTING         = 3;
-    private const uint FILE_FLAG_OVERLAPPED  = 0x40000000;
+
+    private const ushort HID_USAGE_PAGE_DIGITIZER = 0x000D;
+    private const byte   WaveformListReportId     = 0x42;
+    private const byte   TriggerReportId          = 0x41;
+    private const int    TriggerReportLength      = 7;
+    private const int    FirstWaveformOrdinal     = 3;   // 1 = None, 2 = Stop (HID haptics spec)
 
     // ── Public API ─────────────────────────────────────────────────────────
 
@@ -148,7 +168,7 @@ public class HapticEngine : IDisposable
 
                 var handle = CreateFile(detail.DevicePath,
                     GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
-                    IntPtr.Zero, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, IntPtr.Zero);
+                    IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
 
                 if (handle.IsInvalid) continue;
 
@@ -160,8 +180,16 @@ public class HapticEngine : IDisposable
                     continue;
                 }
 
+                // The pen exposes several HID collections under the same VID/PID;
+                // only the digitizer one carries the haptic reports.
+                if (!IsHapticCollection(handle, out int featureLength) ||
+                    !BuildWaveformTable(handle, featureLength))
+                {
+                    handle.Dispose();
+                    continue;
+                }
+
                 _device = handle;
-                BuildWaveformTable();
                 return true;
             }
         }
@@ -177,7 +205,12 @@ public class HapticEngine : IDisposable
         if (_device == null || _device.IsInvalid) return;
         if (!_ordinals.TryGetValue((ushort)waveform, out byte ordinal)) return;
 
-        var cmd = new byte[] { 0x41, 0x01, intensity, ordinal, 0x00, 0x00, 0x00 };
+        // report id, repeat count, intensity, waveform ordinal, cutoff time, retrigger period (u16)
+        var cmd = new byte[TriggerReportLength];
+        cmd[0] = TriggerReportId;
+        cmd[1] = 0x01;
+        cmd[2] = intensity;
+        cmd[3] = ordinal;
 
         // WriteFile via SafeFileHandle
         if (!WriteFile(_device, cmd, (uint)cmd.Length, out _, IntPtr.Zero))
@@ -195,43 +228,52 @@ public class HapticEngine : IDisposable
 
     // ── Private helpers ────────────────────────────────────────────────────
 
-    // Rust slimpend protocol: query feature report 0x42, parse big-endian u16 pairs.
-    // First half = durations, second half = waveform IDs.
-    // ordinal_base = waveform_ids[0]; Click ordinal = ordinal_base, etc.
-    private void BuildWaveformTable()
+    private static bool IsHapticCollection(SafeFileHandle device, out int featureLength)
     {
-        if (_device == null) return;
-
-        var buf = new byte[512];
-        buf[0] = 0x42;
-        if (!HidD_GetFeature(_device, buf, buf.Length)) return;
-
-        // buf[0] = report id, buf[1..3] = unknown header; data starts at buf[4]
-        var pairs = new List<ushort>();
-        for (int pos = 4; pos + 1 < buf.Length; pos += 2)
+        featureLength = 0;
+        if (!HidD_GetPreparsedData(device, out IntPtr ppd)) return false;
+        try
         {
-            ushort val = (ushort)((buf[pos] << 8) | buf[pos + 1]);
-            if (val == 0 && pos > 10) break;    // end of table
-            pairs.Add(val);
+            HidP_GetCaps(ppd, out HidpCaps caps);
+            featureLength = caps.FeatureReportByteLength;
+            return caps.UsagePage == HID_USAGE_PAGE_DIGITIZER &&
+                   caps.OutputReportByteLength == TriggerReportLength;
         }
+        finally
+        {
+            HidD_FreePreparsedData(ppd);
+        }
+    }
 
-        if (pairs.Count < 2) return;
+    // Feature report 0x42 (HID haptics waveform list), little-endian:
+    //   [0] report id, [1..4] waveform vendor id,
+    //   then N u16 durations (ms), then N u16 waveform ids.
+    // Slot i is waveform ordinal i + 3; ordinals 1 and 2 are always None and Stop.
+    private bool BuildWaveformTable(SafeFileHandle device, int featureLength)
+    {
+        const int tableStart = 5;
+        int slots = (featureLength - tableStart) / 4;
+        if (slots < 1) return false;
 
-        int half = pairs.Count / 2;
-        byte ordinalBase = (byte)pairs[half];   // waveform_ids[0] cast to byte
+        var buf = new byte[featureLength];
+        buf[0] = WaveformListReportId;
+        if (!HidD_GetFeature(device, buf, buf.Length)) return false;
 
-        // Hardcoded entries for None/Stop
+        _ordinals.Clear();
+        _durations.Clear();
         _ordinals[(ushort)Waveform.None] = 1;
         _ordinals[(ushort)Waveform.Stop] = 2;
 
-        for (int i = 0; i < half; i++)
+        for (int i = 0; i < slots; i++)
         {
-            ushort wfId = pairs[half + i];
-            if (wfId < 0x1003) continue;
-            byte ordinal = (byte)(i + ordinalBase);
-            _ordinals[wfId]  = ordinal;
-            _durations[wfId] = pairs[i];
+            ushort duration = BitConverter.ToUInt16(buf, tableStart + i * 2);
+            ushort wfId     = BitConverter.ToUInt16(buf, tableStart + (slots + i) * 2);
+            if (wfId < (ushort)Waveform.Click) continue;    // empty slot
+            _ordinals[wfId]  = (byte)(FirstWaveformOrdinal + i);
+            _durations[wfId] = duration;
         }
+
+        return _ordinals.ContainsKey((ushort)Waveform.Click);
     }
 
     // Helper to pass ref to static readonly Guid
