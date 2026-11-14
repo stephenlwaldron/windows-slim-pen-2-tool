@@ -187,6 +187,10 @@ public partial class MainWindow : Window
         IntensitySlider.Value    = SliderValue(profile.Intensity);
         TouchClickBox.IsChecked  = profile.TouchClick;
         ClickIntensitySlider.Value = SliderValue(profile.ClickIntensity);
+        SensitivitySlider.Value     = SliderValue(profile.Sensitivity);
+        MinimumStrengthSlider.Value = SliderValue(profile.MinimumStrength);
+        PressureEffectSlider.Value  = SliderValue(profile.PressureEffect);
+        RefreshResponse();
         RefreshIntensityText();
         RefreshClickControls();
 
@@ -262,6 +266,84 @@ public partial class MainWindow : Window
     }
 
     private void ConfirmTextureButton_Click(object sender, RoutedEventArgs e) => _app.Preview(Editing);
+
+    // ── Response (advanced) ────────────────────────────────────────────────
+
+    private void ResponseSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_loading) return;
+        Editing.Sensitivity     = (byte)SensitivitySlider.Value;
+        Editing.MinimumStrength = (byte)MinimumStrengthSlider.Value;
+        Editing.PressureEffect  = (byte)PressureEffectSlider.Value;
+        RefreshResponse();
+        _app.SettingsChanged();
+    }
+
+    private void ResetResponseButton_Click(object sender, RoutedEventArgs e)
+    {
+        _loading = true;
+        SensitivitySlider.Value = MinimumStrengthSlider.Value = PressureEffectSlider.Value = Profile.DefaultResponse;
+        _loading = false;
+        ResponseSlider_ValueChanged(sender, null!);
+    }
+
+    private static string ResponseLabel(double value) =>
+        value == Profile.DefaultResponse ? $"{value}% (default)" : $"{value}%";
+
+    private void RefreshResponse()
+    {
+        SensitivityText.Text     = ResponseLabel(SensitivitySlider.Value);
+        MinimumStrengthText.Text = ResponseLabel(MinimumStrengthSlider.Value);
+        PressureEffectText.Text  = ResponseLabel(PressureEffectSlider.Value);
+        DrawCurve();
+    }
+
+    private const double CurveMaxSpeed  = 1600;     // px/s at the right edge of the graph
+    private const double LightPressure  = 0.2;
+    private const int    CurveSamples   = 64;
+
+    // Strength against stroke speed, from the same function the pen uses, for a firm and a light press.
+    private void DrawCurve()
+    {
+        var profile = new Profile
+        {
+            Sensitivity     = (byte)SensitivitySlider.Value,
+            MinimumStrength = (byte)MinimumStrengthSlider.Value,
+            PressureEffect  = (byte)PressureEffectSlider.Value,
+        };
+
+        var accent = TryFindResource("AccentFillColorDefaultBrush") as Brush ?? Brushes.DodgerBlue;
+        var light  = accent.Clone();
+        light.Opacity = 0.4;
+        FirmSwatch.Fill  = accent;
+        LightSwatch.Fill = light;
+
+        double w = CurveCanvas.Width, h = CurveCanvas.Height;
+        CurveCanvas.Children.Clear();
+
+        // faint guide lines at 50% and 100%
+        foreach (double share in new[] { 0.5, 1.0 })
+        {
+            double y = h - 2 - share * (h - 4);
+            CurveCanvas.Children.Add(new System.Windows.Shapes.Line
+            {
+                X1 = 0, X2 = w, Y1 = y, Y2 = y,
+                Stroke = Foreground, Opacity = 0.12, StrokeThickness = 1,
+            });
+        }
+
+        foreach (var (pressure, brush, thickness) in new[] { (LightPressure, light, 2.0), (1.0, accent, 2.5) })
+        {
+            var line = new System.Windows.Shapes.Polyline { Stroke = brush, StrokeThickness = thickness, StrokeLineJoin = PenLineJoin.Round };
+            for (int i = 0; i <= CurveSamples; i++)
+            {
+                double speed = CurveMaxSpeed * i / CurveSamples;
+                double level = profile.Response(speed, pressure);
+                line.Points.Add(new Point(w * i / CurveSamples, h - 2 - level * (h - 4)));
+            }
+            CurveCanvas.Children.Add(line);
+        }
+    }
 
     private void ConfirmClickButton_Click(object sender, RoutedEventArgs e) => _app.PreviewClick(Editing);
 

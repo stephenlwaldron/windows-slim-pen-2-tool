@@ -180,6 +180,64 @@
                             </DockPanel>
                         </Border>
 
+                        <Expander x:Name="ResponseExpander" Margin="0,0,0,8" Padding="18,14"
+                                  Header="Advanced: how the texture responds to your stroke">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Margin="0,0,24,0">
+                                    <TextBlock Text="Sensitivity" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="Higher reaches full strength at slower strokes." />
+                                    <DockPanel Margin="0,4,0,12">
+                                        <TextBlock x:Name="SensitivityText" DockPanel.Dock="Right" Width="110" TextAlignment="Right" VerticalAlignment="Center" />
+                                        <Slider x:Name="SensitivitySlider" Minimum="0" Maximum="100" TickFrequency="10" IsSnapToTickEnabled="True"
+                                                VerticalAlignment="Center" ValueChanged="ResponseSlider_ValueChanged" />
+                                    </DockPanel>
+
+                                    <TextBlock Text="Minimum strength" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="How strong the slowest, lightest stroke feels." />
+                                    <DockPanel Margin="0,4,0,12">
+                                        <TextBlock x:Name="MinimumStrengthText" DockPanel.Dock="Right" Width="110" TextAlignment="Right" VerticalAlignment="Center" />
+                                        <Slider x:Name="MinimumStrengthSlider" Minimum="0" Maximum="100" TickFrequency="10" IsSnapToTickEnabled="True"
+                                                VerticalAlignment="Center" ValueChanged="ResponseSlider_ValueChanged" />
+                                    </DockPanel>
+
+                                    <TextBlock Text="Pressure effect" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="How much pressing harder adds. 0% ignores pressure." />
+                                    <DockPanel Margin="0,4,0,4">
+                                        <TextBlock x:Name="PressureEffectText" DockPanel.Dock="Right" Width="110" TextAlignment="Right" VerticalAlignment="Center" />
+                                        <Slider x:Name="PressureEffectSlider" Minimum="0" Maximum="100" TickFrequency="10" IsSnapToTickEnabled="True"
+                                                VerticalAlignment="Center" ValueChanged="ResponseSlider_ValueChanged" />
+                                    </DockPanel>
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="1" Width="250">
+                                    <Border BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="6"
+                                            Background="{DynamicResource CardBackgroundFillColorDefaultBrush}" Padding="10">
+                                        <Canvas x:Name="CurveCanvas" Width="228" Height="130" ClipToBounds="True" />
+                                    </Border>
+                                    <DockPanel Margin="2,4,2,0">
+                                        <TextBlock DockPanel.Dock="Right" Text="fast" FontSize="11" Opacity="0.65" />
+                                        <TextBlock Text="slow" FontSize="11" Opacity="0.65" />
+                                    </DockPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="2,6,0,0">
+                                        <Rectangle x:Name="FirmSwatch" Width="18" Height="3" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="firm press" FontSize="11" Opacity="0.8" Margin="0,0,14,0" />
+                                        <Rectangle x:Name="LightSwatch" Width="18" Height="3" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="light press" FontSize="11" Opacity="0.8" />
+                                    </StackPanel>
+                                    <Button x:Name="ResetResponseButton" Content="Reset to default" Padding="14,6" Margin="0,12,0,0"
+                                            HorizontalAlignment="Left" Click="ResetResponseButton_Click" />
+                                </StackPanel>
+                            </Grid>
+                        </Expander>
+
                         <Border Style="{StaticResource Card}">
                             <DockPanel>
                                 <CheckBox x:Name="TouchClickBox" DockPanel.Dock="Right" VerticalAlignment="Center"

@@ -14,6 +14,29 @@ public class Profile
     public bool     TouchClick { get; set; }
     public byte     ClickIntensity { get; set; } = Settings.DefaultIntensity;
 
+    // How the texture responds to the stroke, each 0-100. The defaults are the original feel.
+    public byte Sensitivity     { get; set; } = DefaultResponse;   // higher = full strength at slower strokes
+    public byte MinimumStrength { get; set; } = DefaultResponse;   // share of intensity at the slowest drag
+    public byte PressureEffect  { get; set; } = DefaultResponse;   // how much pressing harder adds
+
+    public const byte DefaultResponse = 50;
+
+    private const double BaseFullSpeed = 800;   // px/s that reaches full intensity at default sensitivity
+
+    // Stroke speed (px/s) at which the texture reaches full strength: 3200 at 0, 800 at 50, 200 at 100.
+    [JsonIgnore] public double FullSpeed => BaseFullSpeed * Math.Pow(2, (DefaultResponse - Sensitivity) / 25.0);
+
+    // Share of the texture intensity (0..1) for a stroke at this speed and pressure (0..1).
+    // The settings window draws its graph from this same function.
+    public double Response(double speed, double pressure)
+    {
+        double floor        = MinimumStrength / 100.0;
+        double effect       = PressureEffect / 100.0;
+        double speedPart    = Math.Sqrt(Math.Clamp(speed / FullSpeed, 0.0, 1.0));
+        double pressurePart = (1.0 - effect) + effect * Math.Clamp(pressure, 0.0, 1.0);
+        return floor + (1.0 - floor) * speedPart * pressurePart;
+    }
+
     // What the profile actually produces. 0% on a slider switches that part off.
     [JsonIgnore] public bool HasTexture => Texture != Waveform.None && Intensity > 0;
     [JsonIgnore] public bool HasClick   => TouchClick && ClickIntensity > 0;
@@ -118,6 +141,9 @@ public class Settings
         // 0 is valid on both: it means off
         if (profile.Intensity > 100)      profile.Intensity      = DefaultIntensity;
         if (profile.ClickIntensity > 100) profile.ClickIntensity = DefaultIntensity;
+        if (profile.Sensitivity > 100)     profile.Sensitivity     = Profile.DefaultResponse;
+        if (profile.MinimumStrength > 100) profile.MinimumStrength = Profile.DefaultResponse;
+        if (profile.PressureEffect > 100)  profile.PressureEffect  = Profile.DefaultResponse;
         if (!Enum.IsDefined(profile.Texture)) profile.Texture = Waveform.PencilCont;
     }
 

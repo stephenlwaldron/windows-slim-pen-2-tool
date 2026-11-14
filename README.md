@@ -12,6 +12,7 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 
 - **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Confirm** to feel it on the pen without drawing.
 - **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack). The app switches automatically based on where you're drawing.
+- **Response tuning:** under Advanced, set how sensitive the texture is to stroke speed, how strong the slowest stroke feels, and how much pressure adds, with a live graph of the result. Each profile has its own.
 - **Click on touch (optional):** a click when the tip touches down and lifts, with its own intensity slider. Off by default.
 - **Intensity:** 0% to 100%, 80% by default, set separately for the texture and the click. Turn the Default profile down to 0% if you only want haptics in the apps you list.
 - **Automatic updates** when installed, and it remembers your settings.

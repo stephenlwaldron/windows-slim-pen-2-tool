@@ -52,8 +52,6 @@ public sealed class TrayApp : IDisposable
 
     private const double TextureStartTravel   = 6;      // px moved before a touch counts as a drag
     private const double TextureMinSpeed      = 20;     // px/s; slower than this is "resting"
-    private const double TextureFullSpeed     = 800;    // px/s that reaches full intensity
-    private const double TextureFloor         = 0.5;    // share of intensity at the slowest drag
     private const int    TextureMinStep       = 20;     // intensity change (of 255) worth resending
     private const int    TextureMinIntervalMs = 100;    // retriggering restarts the waveform
 
@@ -285,9 +283,7 @@ public sealed class TrayApp : IDisposable
         // Needs twice the resting speed to start, so it doesn't flutter at the threshold.
         if (!_texturePlaying && speed < TextureMinSpeed * 2) return;
 
-        double speedPart    = Math.Sqrt(Math.Min(speed / TextureFullSpeed, 1.0));
-        double pressurePart = 0.5 + 0.5 * pressure;
-        double level        = TextureFloor + (1.0 - TextureFloor) * speedPart * pressurePart;
+        double level        = profile.Response(speed, pressure);
         byte   target       = Level(profile.Intensity, level);
 
         long now     = _textureClock.ElapsedMilliseconds;
