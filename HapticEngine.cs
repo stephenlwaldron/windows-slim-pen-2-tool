@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
 using Microsoft.Win32.SafeHandles;
@@ -46,6 +47,15 @@ public class HapticEngine : IDisposable
     private readonly object         _ioLock    = new();
     private readonly Queue<byte[]>  _oneShots  = new();
     private byte[]?                 _pendingTexture;
+
+    private string?            _devicePath;         // last haptic collection that worked
+    private int                _failures;           // consecutive failed writes
+    private long               _firstFailureAt;
+    private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private volatile bool      _lastWriteOk = true;
+
+    // False while the most recent buzz didn't reach the pen.
+    public bool LastWriteOk { get => _lastWriteOk; private set => _lastWriteOk = value; }
 
     // ── Win32 ──────────────────────────────────────────────────────────────
 
@@ -207,7 +217,13 @@ public class HapticEngine : IDisposable
                     continue;
                 }
 
-                lock (_ioLock) _device = handle;
+                lock (_ioLock)
+                {
+                    _device     = handle;
+                    _devicePath = detail.DevicePath;
+                }
+                LastWriteOk = true;
+                Log.Write("pen haptics connected");
                 return true;
             }
         }
@@ -241,13 +257,23 @@ public class HapticEngine : IDisposable
         _wake.Set();
     }
 
+    // True once a haptic collection has been found, even if the link is currently down.
+    public bool HasDevice => _devicePath != null;
+
+    // Send a harmless Stop to find out whether the link is up; LastWriteOk reports the result.
+    public void Probe()
+    {
+        LastWriteOk = false;
+        Buzz(Waveform.Stop);
+    }
+
     // How long the pen plays this waveform before it needs retriggering (0 if unknown).
     public int DurationMs(Waveform waveform) =>
         _durations.TryGetValue((ushort)waveform, out ushort ms) ? ms : 0;
 
     private byte[]? BuildTrigger(Waveform waveform, byte intensity)
     {
-        if (!IsConnected) return null;
+        // No IsConnected check: after a failed write the writer reopens the device itself.
         if (!_ordinals.TryGetValue((ushort)waveform, out byte ordinal)) return null;
 
         // report id, repeat count, intensity, waveform ordinal, cutoff time, retrigger period (u16)
@@ -274,18 +300,59 @@ public class HapticEngine : IDisposable
                 }
                 if (cmd == null) break;
 
-                lock (_ioLock)
-                {
-                    if (_device == null || _device.IsInvalid) continue;
-                    if (!WriteFile(_device, cmd, (uint)cmd.Length, out _, IntPtr.Zero))
-                    {
-                        // Device disconnected — mark as gone so the reconnect timer picks it up
-                        _device.Dispose();
-                        _device = null;
-                    }
-                }
+                lock (_ioLock) LastWriteOk = TryWrite(cmd);
             }
         }
+    }
+
+    // The pen drops its Bluetooth link when it sleeps, so a write can fail even though
+    // the pen is in the user's hand. Reopen the same device straight away instead of
+    // waiting for the slow reconnect timer; callers retry while LastWriteOk is false.
+    private bool TryWrite(byte[] cmd)
+    {
+        for (int attempt = 0; attempt < 2; attempt++)
+        {
+            if (_device == null || _device.IsInvalid)
+            {
+                if (_devicePath == null) return false;
+                var reopened = CreateFile(_devicePath,
+                    GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+                    IntPtr.Zero, OPEN_EXISTING, 0, IntPtr.Zero);
+                if (reopened.IsInvalid)
+                {
+                    reopened.Dispose();
+                    _device = null;
+                    NoteFailure($"reopen failed (error {Marshal.GetLastWin32Error()})", 0);
+                    return false;
+                }
+                _device = reopened;
+            }
+
+            long started = _clock.ElapsedMilliseconds;
+            if (WriteFile(_device, cmd, (uint)cmd.Length, out _, IntPtr.Zero))
+            {
+                if (_failures > 0)
+                {
+                    Log.Write($"haptics back after {_clock.ElapsedMilliseconds - _firstFailureAt} ms, {_failures} failed writes");
+                    _failures = 0;
+                }
+                return true;
+            }
+
+            int error = Marshal.GetLastWin32Error();
+            NoteFailure($"write failed (error {error})", _clock.ElapsedMilliseconds - started);
+            _device.Dispose();
+            _device = null;
+        }
+        return false;
+    }
+
+    private void NoteFailure(string what, long tookMs)
+    {
+        if (_failures == 0) _firstFailureAt = _clock.ElapsedMilliseconds;
+        _failures++;
+        // The first few show how long a dead link takes to report; after that it's noise.
+        if (_failures <= 5) Log.Write($"{what}, took {tookMs} ms");
     }
 
     [DllImport("kernel32.dll", SetLastError = true)]

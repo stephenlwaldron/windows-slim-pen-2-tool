@@ -10,6 +10,8 @@ namespace SlimPenHaptics;
 // system-wide (RIDEV_INPUTSINK fires even when our window has no focus).
 public class PenMonitor : NativeWindow, IDisposable
 {
+    // Fired for every report, including while the pen only hovers.
+    public event Action? PenSeen;
     public event Action? PenDown;
     public event Action? PenUp;
 
@@ -189,6 +191,8 @@ public class PenMonitor : NativeWindow, IDisposable
 
             var dev = GetDevice(ri.header.hDevice);
             if (dev == null) return;
+
+            PenSeen?.Invoke();
 
             // Check if Tip Switch (Usage 0x42) is in the active usages
             IntPtr reportPtr = (IntPtr)(pBuf + headerSize);

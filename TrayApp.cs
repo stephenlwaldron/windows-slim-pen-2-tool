@@ -17,6 +17,18 @@ public class TrayApp : ApplicationContext
     private SettingsForm?         _window;
 
     private System.Windows.Forms.Timer _reconnectTimer;
+    private bool                  _iconConnected;
+
+    // Waking the pen's Bluetooth link after it has been idle
+    private long _penSeenAt;
+    private long _wakeUntil;
+    private long _wakeProbeAt;
+    private bool _wakeProbed;
+
+    private const int WakeIdleMs    = 2000;     // no pen input for this long counts as "put away"
+    private const int WakeWindowMs  = 8000;     // how long to keep trying after it reappears
+    private const int WakeProbeMs   = 400;      // gap between tries
+    private const int TextureRetryMs = 150;     // resend a texture that didn't reach the pen
 
     // Drag texture state
     private bool     _texturePlaying;
@@ -48,8 +60,17 @@ public class TrayApp : ApplicationContext
         _tray.ContextMenuStrip = BuildMenu();
         _tray.DoubleClick += (_, _) => ShowWindow();
 
+        // Pen input comes through the screen, so it can be watched before the pen's
+        // Bluetooth side (the haptics) is reachable.
+        _monitor = new PenMonitor();
+        _monitor.PenSeen += OnPenSeen;
+        _monitor.PenDown += OnPenDown;
+        _monitor.PenUp   += OnPenUp;
+        _monitor.PenMove += OnPenMove;
+
         // Try connecting to the pen on startup
         TryConnect();
+        Log.Write(_haptic.IsConnected ? "started" : "started; pen not reachable yet (asleep or not paired)");
 
         // A tray app starts invisibly, so say so: a window the first time, a notification after.
         if (!_settings.WelcomeShown)
@@ -72,27 +93,56 @@ public class TrayApp : ApplicationContext
         _reconnectTimer.Tick += (_, _) =>
         {
             if (!_haptic.IsConnected) TryConnect();
+            UpdateIcon();
         };
         _reconnectTimer.Start();
     }
 
     private void TryConnect()
     {
-        if (_haptic.Connect())
+        _haptic.Connect();
+        UpdateIcon();
+    }
+
+    private void UpdateIcon()
+    {
+        bool connected = _haptic.IsConnected;
+        if (connected == _iconConnected) return;
+        _iconConnected = connected;
+        _tray.Icon = BuildIcon(connected);
+        _tray.Text = connected ? "Slim Pen Haptics — connected" : "Slim Pen Haptics — pen asleep or not found";
+    }
+
+    // The pen drops its Bluetooth link when it sleeps, while its tip keeps working through
+    // the screen. So when the pen shows up after a pause, poke the link straight away and
+    // keep poking until a buzz gets through, instead of finding out on the first stroke.
+    private void OnPenSeen()
+    {
+        long now  = _textureClock.ElapsedMilliseconds;
+        bool woke = now - _penSeenAt > WakeIdleMs;
+        _penSeenAt = now;
+        if (!_enabled) return;
+
+        if (woke)
         {
-            _monitor?.Dispose();
-            _monitor = new PenMonitor();
-            _monitor.PenDown += OnPenDown;
-            _monitor.PenUp   += OnPenUp;
-            _monitor.PenMove += OnPenMove;
-            _tray.Icon = BuildIcon(connected: true);
-            _tray.Text = "Slim Pen Haptics — connected";
+            _wakeUntil  = now + WakeWindowMs;
+            _wakeProbed = false;
+            _wakeProbeAt = now - WakeProbeMs;
         }
-        else
+
+        if (now >= _wakeUntil || now - _wakeProbeAt < WakeProbeMs) return;
+
+        if (_wakeProbed && _haptic.IsConnected && _haptic.LastWriteOk)
         {
-            _tray.Icon = BuildIcon(connected: false);
-            _tray.Text = "Slim Pen Haptics — pen not found";
+            _wakeUntil = 0;
+            UpdateIcon();
+            return;
         }
+
+        _wakeProbeAt = now;
+        _wakeProbed  = true;
+        if (_haptic.HasDevice) _haptic.Probe();
+        else                   TryConnect();
     }
 
     private void OnPenDown()
@@ -141,7 +191,9 @@ public class TrayApp : ApplicationContext
         bool changed = Math.Abs(target - _textureIntensity) >= TextureMinStep &&
                        elapsed >= TextureMinIntervalMs;
 
-        if (!_texturePlaying || changed || elapsed >= keepAlive)
+        bool retry = !_haptic.LastWriteOk && elapsed >= TextureRetryMs;
+
+        if (!_texturePlaying || changed || retry || elapsed >= keepAlive)
         {
             _haptic.BuzzTexture(_settings.Texture, target);
             _texturePlaying   = true;
