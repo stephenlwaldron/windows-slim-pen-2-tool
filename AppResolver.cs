@@ -38,6 +38,15 @@ public static class AppResolver
         return processId == 0 ? null : ExePath(processId);
     }
 
+    // Full path of the exe that has keyboard focus, which is where sent keys end up.
+    public static string? ForegroundExe()
+    {
+        IntPtr hwnd = GetForegroundWindow();
+        if (hwnd == IntPtr.Zero) return null;
+        GetWindowThreadProcessId(hwnd, out uint processId);
+        return processId == 0 ? null : ExePath(processId);
+    }
+
     public static string? ExePath(uint processId)
     {
         IntPtr process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId);

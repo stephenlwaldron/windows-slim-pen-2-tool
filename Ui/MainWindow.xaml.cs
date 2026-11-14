@@ -178,6 +178,9 @@ public partial class MainWindow : Window
         var isApp = item.App != null ? Visibility.Visible : Visibility.Collapsed;
         RemoveButton.Visibility   = isApp;
         AppEnabledCard.Visibility = isApp;
+        EraserCard.Visibility     = isApp;
+        EraserShortcutBox.Text    = ShortcutText(item.App?.EraserShortcut);
+        DrawShortcutBox.Text      = ShortcutText(item.App?.DrawShortcut);
         AppEnabledBox.IsChecked   = item.App?.Enabled ?? true;
         ProfileCards.IsEnabled    = item.App?.Enabled ?? true;
         ProfileCards.Opacity      = ProfileCards.IsEnabled ? 1.0 : 0.45;
@@ -266,6 +269,36 @@ public partial class MainWindow : Window
     }
 
     private void ConfirmTextureButton_Click(object sender, RoutedEventArgs e) => _app.Preview(Editing);
+
+    // ── Eraser shortcut ────────────────────────────────────────────────────
+
+    private static string ShortcutText(string? shortcut)
+    {
+        string text = KeySender.Display(shortcut);
+        return text.Length == 0 ? "Not set" : text;
+    }
+
+    // The boxes record whatever shortcut is pressed while they have focus.
+    private void ShortcutBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (_editingApp == null || sender is not TextBox box) return;
+
+        var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
+        if (key == System.Windows.Input.Key.Tab) return;            // let Tab move on as usual
+        e.Handled = true;
+        if (KeySender.IsModifier(key)) return;                      // wait for the real key
+
+        var modifiers = System.Windows.Input.Keyboard.Modifiers;
+        bool clear = modifiers == System.Windows.Input.ModifierKeys.None &&
+                     key is System.Windows.Input.Key.Back or System.Windows.Input.Key.Delete or System.Windows.Input.Key.Escape;
+        string shortcut = clear ? "" : KeySender.Format(modifiers, key);
+
+        if ((string)box.Tag == "Eraser") _editingApp.EraserShortcut = shortcut;
+        else                             _editingApp.DrawShortcut   = shortcut;
+
+        box.Text = ShortcutText(shortcut);
+        _app.SettingsChanged();
+    }
 
     // ── Response (advanced) ────────────────────────────────────────────────
 

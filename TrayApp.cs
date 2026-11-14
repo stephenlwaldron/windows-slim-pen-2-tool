@@ -27,6 +27,8 @@ public sealed class TrayApp : IDisposable
 
     // The app under the pen and the profile that applies there (null = haptics off in it)
     private string?  _activeExe;
+    private string?  _eraserSentTo;     // app whose eraser shortcut was pressed on the last flip
+    private bool     _eraserEndLogged;
     private Profile? _profile;
     private readonly List<string> _recentApps = new();
     private static readonly string OwnExe = Path.GetFileName(Environment.ProcessPath ?? "SlimPenHaptics.exe");
@@ -80,6 +82,7 @@ public sealed class TrayApp : IDisposable
         _monitor.PenDown += OnPenDown;
         _monitor.PenUp   += OnPenUp;
         _monitor.PenMove += OnPenMove;
+        _monitor.EraserEnd += OnEraserEnd;
 
         TryConnect();
         Log.Write($"started v{Updater.Version}" + (_haptic.IsConnected ? "" : "; pen not reachable yet (asleep or not paired)"));
@@ -238,6 +241,46 @@ public sealed class TrayApp : IDisposable
         StopTexture();
         if (Settings.Enabled && _profile is { HasClick: true })
             _haptic.Buzz(Waveform.Release, Level(_profile.ClickIntensity, 1.0));
+    }
+
+    // Flipping the pen presses the app's own eraser shortcut, for apps that ignore the eraser end.
+    // Keys go to the window with keyboard focus, so only act when that is the app under the pen.
+    private void OnEraserEnd(bool eraser)
+    {
+        string? under = AppResolver.ExeUnderPen();
+        string? exe   = under == null ? null : Path.GetFileName(under);
+        var app = Settings.FindApp(exe);
+
+        if (eraser)
+        {
+            _eraserSentTo = null;
+            if (!_eraserEndLogged)
+            {
+                // Once per run, so a bug report shows whether this pen reports its eraser end at all.
+                _eraserEndLogged = true;
+                Log.Write("pen eraser end detected");
+            }
+            if (app == null || string.IsNullOrEmpty(app.EraserShortcut)) return;
+            if (!IsForeground(exe)) return;
+            if (KeySender.Send(app.EraserShortcut)) _eraserSentTo = app.Exe;
+            Log.Write($"eraser end over {exe}: sent {KeySender.Display(app.EraserShortcut)}");
+        }
+        else
+        {
+            // Only switch back where this app switched to the eraser in the first place.
+            string? sentTo = _eraserSentTo;
+            _eraserSentTo = null;
+            if (app == null || sentTo == null || string.IsNullOrEmpty(app.DrawShortcut)) return;
+            if (!string.Equals(sentTo, app.Exe, StringComparison.OrdinalIgnoreCase) || !IsForeground(exe)) return;
+            KeySender.Send(app.DrawShortcut);
+            Log.Write($"tip over {exe}: sent {KeySender.Display(app.DrawShortcut)}");
+        }
+    }
+
+    private static bool IsForeground(string? exe)
+    {
+        string? focused = AppResolver.ForegroundExe();
+        return focused != null && string.Equals(Path.GetFileName(focused), exe, StringComparison.OrdinalIgnoreCase);
     }
 
     // Pick the profile for whichever app the pen just touched.

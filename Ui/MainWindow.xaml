@@ -149,6 +149,29 @@
                         </DockPanel>
                     </Border>
 
+                    <!-- Not haptics, so it stays usable when haptics are off in the app -->
+                    <Border x:Name="EraserCard" Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Text="Eraser shortcut" Style="{StaticResource CardTitle}" />
+                            <TextBlock Style="{StaticResource CardHint}"
+                                       Text="For apps that ignore the pen's eraser end. Flip the pen and this presses the app's eraser shortcut for you; flip back and it presses the drawing one. Click a box and press the keys. Backspace clears it." />
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Eraser tool" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                <TextBox x:Name="EraserShortcutBox" Grid.Column="1" IsReadOnly="True" Tag="Eraser"
+                                         PreviewKeyDown="ShortcutBox_PreviewKeyDown" ToolTip="Click, then press the app's eraser shortcut" />
+                                <TextBlock Grid.Column="2" Text="Back to drawing" VerticalAlignment="Center" Margin="24,0,12,0" />
+                                <TextBox x:Name="DrawShortcutBox" Grid.Column="3" IsReadOnly="True" Tag="Draw"
+                                         PreviewKeyDown="ShortcutBox_PreviewKeyDown" ToolTip="Click, then press the shortcut for the tool to return to" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <StackPanel x:Name="ProfileCards">
                         <Border Style="{StaticResource Card}">
                             <DockPanel>
@@ -274,6 +297,7 @@
                             </DockPanel>
                         </Border>
                     </StackPanel>
+
                 </StackPanel>
 
                 <!-- App-wide settings -->

@@ -15,11 +15,15 @@ public class PenMonitor : NativeWindow, IDisposable
     public event Action? PenDown;
     public event Action? PenUp;
 
+    // Fired when the pen is flipped: true = eraser end towards the screen, false = tip again.
+    public event Action<bool>? EraserEnd;
+
     // Fired for each report while the tip is down:
     // speed (screen px/s, smoothed), pressure (0..1), travel since pen-down (px).
     public event Action<double, double, double>? PenMove;
 
     private bool _tipDown;
+    private bool _eraserEnd;
     private bool _disposed;
 
     // Per-device parse data, built on the first report from that device.
@@ -116,6 +120,8 @@ public class PenMonitor : NativeWindow, IDisposable
     private const ushort HID_USAGE_PAGE_DIGITIZER = 0x000D;
     private const ushort HID_USAGE_DIGITIZER_PEN  = 0x0002;
     private const ushort HID_USAGE_TIP_SWITCH      = 0x0042;
+    private const ushort HID_USAGE_INVERT          = 0x003C;    // eraser end near the screen
+    private const ushort HID_USAGE_ERASER          = 0x0045;    // eraser end touching
     private const ushort HID_USAGE_TIP_PRESSURE    = 0x0030;
     private const ushort HID_USAGE_PAGE_GENERIC    = 0x0001;
     private const ushort HID_USAGE_GENERIC_X       = 0x0030;
@@ -202,11 +208,21 @@ public class PenMonitor : NativeWindow, IDisposable
                                         usages, ref usageCount,
                                         dev.Ppd, reportPtr, ri.hid.dwSizeHid);
 
-            bool tipNow = false;
+            bool tipNow = false, eraserNow = false;
             for (uint j = 0; j < usageCount; j++)
             {
-                if (usages[j] == HID_USAGE_TIP_SWITCH) { tipNow = true; break; }
+                if (usages[j] == HID_USAGE_TIP_SWITCH) tipNow = true;
+                if (usages[j] == HID_USAGE_INVERT || usages[j] == HID_USAGE_ERASER) eraserNow = true;
             }
+
+            if (eraserNow != _eraserEnd)
+            {
+                _eraserEnd = eraserNow;
+                EraserEnd?.Invoke(eraserNow);
+            }
+
+            // Erasing is not drawing: no click or texture from the eraser end.
+            if (eraserNow) tipNow = false;
 
             if (tipNow && !_tipDown)
             {

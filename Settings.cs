@@ -52,6 +52,11 @@ public class AppEntry
     public string  Path    { get; set; } = "";      // where it was when added; used for its icon
     public string  Name    { get; set; } = "";
     public bool    Enabled { get; set; } = true;    // false = no haptics from this app in it
+
+    // Keyboard shortcuts pressed for the user when the pen is flipped over this app, in
+    // KeySender's stored form ("Shift+E"). Empty = do nothing.
+    public string EraserShortcut { get; set; } = "";    // on flipping to the eraser end
+    public string DrawShortcut   { get; set; } = "";    // on flipping back to the tip
     public Profile Profile { get; set; } = new();
 }
 
