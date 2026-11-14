@@ -4,6 +4,10 @@
 
 The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else.
 
+<p align="center">
+  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Feel it button, intensity at 60%, and click on touch enabled. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
+</p>
+
 ## What you get
 
 - **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Feel it** to try one without drawing.
@@ -12,6 +16,10 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 - **Intensity:** 10% to 100%, 80% by default.
 - **Automatic updates** when installed, and it remembers your settings.
 - A settings window in the Windows 11 style, with light and dark mode.
+
+<p align="center">
+  <img src="assets/screenshots/default-profile.png" width="760" alt="The Default profile: Pencil texture, intensity at 80%, click on touch off. It applies to every app without its own profile.">
+</p>
 
 ## Download and run
 
@@ -62,7 +70,8 @@ dotnet build -c Release -r win-x64
 To build the installers, portable zips and update files for both architectures (needs `dotnet tool install -g vpk` once):
 
 ```
-.\scriptselease.ps1 -Version 2.0.0
+.\scripts
+elease.ps1 -Version 2.0.0
 ```
 
 Run `SlimPenHaptics.exe --buzz` to fire a single test click; exit code 0 means the pen accepted it. A small log of connection changes is kept at `%AppData%\SlimPenHaptics\log.txt`.
