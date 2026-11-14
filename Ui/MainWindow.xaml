@@ -180,8 +180,13 @@
                             </DockPanel>
                         </Border>
 
-                        <Expander x:Name="ResponseExpander" Margin="0,0,0,8" Padding="18,14"
-                                  Header="Advanced: how the texture responds to your stroke">
+                        <!-- Hidden until asked for: most people never need to tune the response -->
+                        <Button x:Name="AdvancedButton" Content="Advanced" Padding="14,6" Margin="0,0,0,8"
+                                HorizontalAlignment="Right" Click="AdvancedButton_Click" />
+
+                        <Border x:Name="ResponsePanel" Style="{StaticResource Card}" Visibility="Collapsed">
+                            <StackPanel>
+                            <TextBlock Text="How the texture responds to your stroke" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -236,7 +241,8 @@
                                             HorizontalAlignment="Left" Click="ResetResponseButton_Click" />
                                 </StackPanel>
                             </Grid>
-                        </Expander>
+                            </StackPanel>
+                        </Border>
 
                         <Border Style="{StaticResource Card}">
                             <DockPanel>

@@ -279,6 +279,13 @@ public partial class MainWindow : Window
         _app.SettingsChanged();
     }
 
+    private void AdvancedButton_Click(object sender, RoutedEventArgs e)
+    {
+        bool show = ResponsePanel.Visibility != Visibility.Visible;
+        ResponsePanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        AdvancedButton.Content   = show ? "Hide advanced" : "Advanced";
+    }
+
     private void ResetResponseButton_Click(object sender, RoutedEventArgs e)
     {
         _loading = true;
