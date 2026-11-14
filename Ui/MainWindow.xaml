@@ -155,7 +155,7 @@
                             <DockPanel>
                                 <CheckBox x:Name="EraserEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Margin="16,0,0,0" Click="EraserEnabledBox_Click" />
-                                <StackPanel>
+                                <StackPanel x:Name="EraserText">
                                     <TextBlock Text="Eraser shortcut" Style="{StaticResource CardTitle}" />
                                     <TextBlock Style="{StaticResource CardHint}"
                                                Text="Optional, for apps that ignore the pen's eraser end. Flip the pen and this presses the app's eraser shortcut for you; flip back and it presses the drawing one." />

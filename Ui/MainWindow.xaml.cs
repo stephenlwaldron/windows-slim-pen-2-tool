@@ -282,12 +282,12 @@ public partial class MainWindow : Window
         _app.SettingsChanged();
     }
 
-    // The shortcut boxes are greyed out until the feature is switched on.
+    // Switched off, the card is greyed out and its shortcut boxes are hidden; only the checkbox stays live.
     private void RefreshEraserBoxes()
     {
         bool on = EraserEnabledBox.IsChecked == true;
-        EraserBoxes.IsEnabled = on;
-        EraserBoxes.Opacity   = on ? 1.0 : 0.45;
+        EraserBoxes.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
+        EraserText.Opacity     = on ? 1.0 : 0.45;
     }
 
     private static string ShortcutText(string? shortcut)
