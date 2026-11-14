@@ -179,6 +179,8 @@ public partial class MainWindow : Window
         RemoveButton.Visibility   = isApp;
         AppEnabledCard.Visibility = isApp;
         EraserCard.Visibility     = isApp;
+        EraserEnabledBox.IsChecked = item.App?.EraserEnabled ?? false;
+        RefreshEraserBoxes();
         EraserShortcutBox.Text    = ShortcutText(item.App?.EraserShortcut);
         DrawShortcutBox.Text      = ShortcutText(item.App?.DrawShortcut);
         AppEnabledBox.IsChecked   = item.App?.Enabled ?? true;
@@ -271,6 +273,22 @@ public partial class MainWindow : Window
     private void ConfirmTextureButton_Click(object sender, RoutedEventArgs e) => _app.Preview(Editing);
 
     // ── Eraser shortcut ────────────────────────────────────────────────────
+
+    private void EraserEnabledBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading || _editingApp == null) return;
+        _editingApp.EraserEnabled = EraserEnabledBox.IsChecked == true;
+        RefreshEraserBoxes();
+        _app.SettingsChanged();
+    }
+
+    // The shortcut boxes are greyed out until the feature is switched on.
+    private void RefreshEraserBoxes()
+    {
+        bool on = EraserEnabledBox.IsChecked == true;
+        EraserBoxes.IsEnabled = on;
+        EraserBoxes.Opacity   = on ? 1.0 : 0.45;
+    }
 
     private static string ShortcutText(string? shortcut)
     {

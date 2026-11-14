@@ -94,7 +94,13 @@ public static class KeySender
         return parts.Length > 0 && Enum.TryParse(parts[^1], out key) && key != Key.None && !IsModifier(key);
     }
 
+    private const int HoldMs = 30;      // pause between key events
+
     // Press and release the shortcut. It goes to whichever window has keyboard focus.
+    // The keys are held briefly, one event at a time: apps such as Illustrator check whether Shift
+    // is down a moment after the letter arrives, and miss it when everything happens in one instant.
+    // Runs on a background thread so the pauses never delay pen input. Returns false if the
+    // shortcut text can't be understood.
     public static bool Send(string? shortcut)
     {
         if (!TryParse(shortcut, out var modifiers, out var key)) return false;
@@ -105,12 +111,23 @@ public static class KeySender
         if (modifiers.HasFlag(ModifierKeys.Shift))   down.Add(VK_SHIFT);
         down.Add((ushort)KeyInterop.VirtualKeyFromKey(key));
 
-        var inputs = new List<INPUT>();
-        foreach (ushort vk in down) inputs.Add(Make(vk, up: false));
-        for (int i = down.Count - 1; i >= 0; i--) inputs.Add(Make(down[i], up: true));
-
-        return SendInput((uint)inputs.Count, inputs.ToArray(), Marshal.SizeOf<INPUT>()) == inputs.Count;
+        System.Threading.Tasks.Task.Run(() =>
+        {
+            foreach (ushort vk in down)
+            {
+                SendOne(Make(vk, up: false));
+                System.Threading.Thread.Sleep(HoldMs);
+            }
+            for (int i = down.Count - 1; i >= 0; i--)
+            {
+                SendOne(Make(down[i], up: true));
+                System.Threading.Thread.Sleep(HoldMs);
+            }
+        });
+        return true;
     }
+
+    private static void SendOne(INPUT input) => SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());
 
     private static INPUT Make(ushort vk, bool up) => new()
     {

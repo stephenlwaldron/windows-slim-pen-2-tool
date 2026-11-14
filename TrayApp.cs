@@ -260,7 +260,7 @@ public sealed class TrayApp : IDisposable
                 _eraserEndLogged = true;
                 Log.Write("pen eraser end detected");
             }
-            if (app == null || string.IsNullOrEmpty(app.EraserShortcut)) return;
+            if (app == null || !app.EraserEnabled || string.IsNullOrEmpty(app.EraserShortcut)) return;
             if (!IsForeground(exe)) return;
             if (KeySender.Send(app.EraserShortcut)) _eraserSentTo = app.Exe;
             Log.Write($"eraser end over {exe}: sent {KeySender.Display(app.EraserShortcut)}");
@@ -270,7 +270,7 @@ public sealed class TrayApp : IDisposable
             // Only switch back where this app switched to the eraser in the first place.
             string? sentTo = _eraserSentTo;
             _eraserSentTo = null;
-            if (app == null || sentTo == null || string.IsNullOrEmpty(app.DrawShortcut)) return;
+            if (app == null || !app.EraserEnabled || sentTo == null || string.IsNullOrEmpty(app.DrawShortcut)) return;
             if (!string.Equals(sentTo, app.Exe, StringComparison.OrdinalIgnoreCase) || !IsForeground(exe)) return;
             KeySender.Send(app.DrawShortcut);
             Log.Write($"tip over {exe}: sent {KeySender.Display(app.DrawShortcut)}");

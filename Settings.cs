@@ -55,6 +55,7 @@ public class AppEntry
 
     // Keyboard shortcuts pressed for the user when the pen is flipped over this app, in
     // KeySender's stored form ("Shift+E"). Empty = do nothing.
+    public bool   EraserEnabled  { get; set; }          // off until the user opts in
     public string EraserShortcut { get; set; } = "";    // on flipping to the eraser end
     public string DrawShortcut   { get; set; } = "";    // on flipping back to the tip
     public Profile Profile { get; set; } = new();
