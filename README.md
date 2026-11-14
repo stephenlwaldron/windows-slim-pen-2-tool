@@ -5,7 +5,7 @@
 The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else.
 
 <p align="center">
-  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, and click on touch enabled with its own intensity slider. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
+  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, an Advanced button, and click on touch enabled with its own intensity slider. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
 </p>
 
 ## What you get
@@ -20,6 +20,10 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 
 <p align="center">
   <img src="assets/screenshots/default-profile.png" width="760" alt="The Default profile: Pencil texture, intensity at 80%, click on touch off. It applies to every app without its own profile.">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/response-tuning.png" width="760" alt="The Advanced section open on the Default profile: sliders for Sensitivity, Minimum strength and Pressure effect, each at 50%, beside a graph of strength against stroke speed with one line for a firm press and one for a light press.">
 </p>
 
 ## Download and run
