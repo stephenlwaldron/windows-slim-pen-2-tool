@@ -74,17 +74,31 @@ The pen's haptic commands were first worked out by [zeroxoneafour/slimpend](http
 
 ## Build from source
 
-```
-dotnet build -c Release -r win-x64
-```
+You need Windows and the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0).
 
-To build the installers, portable zips and update files for both architectures (needs `dotnet tool install -g vpk` once):
+Build and run it:
 
 ```
-.\scripts\release.ps1 -Version 2.0.0
+git clone https://github.com/stephenlwaldron/windows-slim-pen-haptics-unlocked
+cd windows-slim-pen-haptics-unlocked
+dotnet run -c Release -r win-x64
 ```
 
-Run `SlimPenHaptics.exe --buzz` to fire a single test click; exit code 0 means the pen accepted it. A small log of connection changes is kept at `%AppData%\SlimPenHaptics\log.txt`.
+Use `-r win-arm64` on a Snapdragon Surface. The built program lands in `bin\Release\net9.0-windows\win-x64\SlimPenHaptics.exe`. Run this way it behaves like the portable version: everything works, but it doesn't update itself.
+
+To build the installers, portable zips and update files for both architectures, as published on the Releases page:
+
+```
+dotnet tool install -g vpk
+.\scripts\release.ps1 -Version 2.2.0
+```
+
+They are written to `artifacts\releases`. Adding `-Publish` also creates the GitHub release, which needs the `gh` command-line tool.
+
+Two things that help when something isn't working:
+
+- `SlimPenHaptics.exe --buzz` fires a single test click and exits. Exit code 0 means the pen accepted it, 1 means the pen wasn't found, 2 means the write failed.
+- A small log of connection changes and eraser shortcuts sent is kept at `%AppData%\SlimPenHaptics\log.txt`.
 
 ## License
 
