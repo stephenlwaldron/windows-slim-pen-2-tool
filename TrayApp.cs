@@ -13,14 +13,11 @@ public class TrayApp : ApplicationContext
     private readonly HapticEngine _haptic;
     private PenMonitor?           _monitor;
     private bool                  _enabled = true;
-    private byte                  _intensity = DefaultIntensity;
-    private bool                  _touchClick = false;  // click on pen-down, release on pen-up
+    private readonly Settings     _settings = Settings.Load();
 
-    private const byte DefaultIntensity = 80;
     private System.Windows.Forms.Timer _reconnectTimer;
 
     // Drag texture state
-    private Waveform _texture = Waveform.PencilCont;    // Waveform.None = off
     private bool     _texturePlaying;
     private byte     _textureIntensity;
     private long     _textureSentAt;
@@ -84,24 +81,24 @@ public class TrayApp : ApplicationContext
     private void OnPenDown()
     {
         _texturePlaying = false;
-        if (_enabled && _touchClick) _haptic.Buzz(Waveform.Click, Level(1.0));
+        if (_enabled && _settings.TouchClick) _haptic.Buzz(Waveform.Click, Level(1.0));
     }
 
     private void OnPenUp()
     {
         StopTexture();
-        if (_enabled && _touchClick) _haptic.Buzz(Waveform.Release, Level(1.0));
+        if (_enabled && _settings.TouchClick) _haptic.Buzz(Waveform.Release, Level(1.0));
     }
 
-    // The pen's intensity field runs 1..255; _intensity is the menu percentage of that.
+    // The pen's intensity field runs 1..255; _settings.Intensity is the menu percentage of that.
     private byte Level(double fraction) =>
-        (byte)Math.Clamp(Math.Round(255 * _intensity / 100.0 * fraction), 1, 255);
+        (byte)Math.Clamp(Math.Round(255 * _settings.Intensity / 100.0 * fraction), 1, 255);
 
     // Drag feedback: play the chosen texture while the tip moves, scaling its
     // intensity with stroke speed and pressure, and go quiet when the pen rests.
     private void OnPenMove(double speed, double pressure, double travel)
     {
-        if (!_enabled || _texture == Waveform.None) return;
+        if (!_enabled || _settings.Texture == Waveform.None) return;
 
         if (travel < TextureStartTravel || speed < TextureMinSpeed)
         {
@@ -121,7 +118,7 @@ public class TrayApp : ApplicationContext
         long elapsed = now - _textureSentAt;
 
         // The pen plays a texture for a fixed time, so retrigger before it runs out.
-        int  duration  = _haptic.DurationMs(_texture);
+        int  duration  = _haptic.DurationMs(_settings.Texture);
         long keepAlive = duration > 0 ? duration * 3 / 4 : 1000;
 
         bool changed = Math.Abs(target - _textureIntensity) >= TextureMinStep &&
@@ -129,7 +126,7 @@ public class TrayApp : ApplicationContext
 
         if (!_texturePlaying || changed || elapsed >= keepAlive)
         {
-            _haptic.BuzzTexture(_texture, target);
+            _haptic.BuzzTexture(_settings.Texture, target);
             _texturePlaying   = true;
             _textureIntensity = target;
             _textureSentAt    = now;
@@ -175,16 +172,16 @@ public class TrayApp : ApplicationContext
         var intensityMenu = new ToolStripMenuItem("Intensity");
         foreach (byte val in new byte[] { 20, 40, 60, 80, 100 })
         {
-            string label = val == DefaultIntensity ? $"{val}% (Default)" : $"{val}%";
+            string label = val == Settings.DefaultIntensity ? $"{val}% (Default)" : $"{val}%";
             byte captured = val;
-            var item = new ToolStripMenuItem(label) { Checked = _intensity == val };
-            item.Click += (_, _) => { _intensity = captured; RebuildMenu(); };
+            var item = new ToolStripMenuItem(label) { Checked = _settings.Intensity == val };
+            item.Click += (_, _) => { _settings.Intensity = captured; _settings.Save(); RebuildMenu(); };
             intensityMenu.DropDownItems.Add(item);
         }
         menu.Items.Add(intensityMenu);
 
-        var touchItem = new ToolStripMenuItem("Click on touch") { Checked = _touchClick };
-        touchItem.Click += (_, _) => { _touchClick = !_touchClick; RebuildMenu(); };
+        var touchItem = new ToolStripMenuItem("Click on touch") { Checked = _settings.TouchClick };
+        touchItem.Click += (_, _) => { _settings.TouchClick = !_settings.TouchClick; _settings.Save(); RebuildMenu(); };
         menu.Items.Add(touchItem);
 
         // Drag texture submenu
@@ -196,8 +193,8 @@ public class TrayApp : ApplicationContext
                  })
         {
             Waveform captured = wf;
-            var item = new ToolStripMenuItem(label) { Checked = _texture == wf };
-            item.Click += (_, _) => { StopTexture(); _texture = captured; RebuildMenu(); };
+            var item = new ToolStripMenuItem(label) { Checked = _settings.Texture == wf };
+            item.Click += (_, _) => { StopTexture(); _settings.Texture = captured; _settings.Save(); RebuildMenu(); };
             textureMenu.DropDownItems.Add(item);
         }
         menu.Items.Add(textureMenu);
