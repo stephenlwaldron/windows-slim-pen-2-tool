@@ -13,7 +13,7 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 - **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Feel it** to try one without drawing.
 - **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack). The app switches automatically based on where you're drawing.
 - **Click on touch (optional):** a click when the tip touches down and lifts. Off by default.
-- **Intensity:** 10% to 100%, 80% by default.
+- **Intensity:** 0% to 100%, 80% by default. Set the Default profile to 0% if you only want haptics in the apps you list.
 - **Automatic updates** when installed, and it remembers your settings.
 - A settings window in the Windows 11 style, with light and dark mode.
 
@@ -70,8 +70,7 @@ dotnet build -c Release -r win-x64
 To build the installers, portable zips and update files for both architectures (needs `dotnet tool install -g vpk` once):
 
 ```
-.\scripts
-elease.ps1 -Version 2.0.0
+.\scriptselease.ps1 -Version 2.0.0
 ```
 
 Run `SlimPenHaptics.exe --buzz` to fire a single test click; exit code 0 means the pen accepted it. A small log of connection changes is kept at `%AppData%\SlimPenHaptics\log.txt`.
