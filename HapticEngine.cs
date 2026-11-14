@@ -49,6 +49,7 @@ public class HapticEngine : IDisposable
     private byte[]?                 _pendingTexture;
 
     private string?            _devicePath;         // last haptic collection that worked
+    private string?            _bluetoothId;        // the Bluetooth device that collection belongs to
     private int                _failures;           // consecutive failed writes
     private long               _firstFailureAt;
     private readonly Stopwatch _clock = Stopwatch.StartNew();
@@ -161,7 +162,17 @@ public class HapticEngine : IDisposable
 
     // ── Public API ─────────────────────────────────────────────────────────
 
-    public bool IsConnected => _device != null && !_device.IsInvalid;
+    // True when the pen has been found and its Bluetooth link is up right now.
+    // A sleeping or docked pen keeps its device handle, so the handle alone can't tell.
+    public bool IsConnected
+    {
+        get
+        {
+            if (_devicePath == null) return false;
+            bool? linkUp = _bluetoothId != null ? PenLink.IsConnected(_bluetoothId) : null;
+            return linkUp ?? (_device != null && !_device.IsInvalid);
+        }
+    }
 
     public HapticEngine()
     {
@@ -222,8 +233,11 @@ public class HapticEngine : IDisposable
                     _device     = handle;
                     _devicePath = detail.DevicePath;
                 }
+                _bluetoothId = PenLink.FindBluetoothDevice(detail.DevicePath);
                 LastWriteOk = true;
-                Log.Write("pen haptics connected");
+                Log.Write(_bluetoothId != null
+                    ? "pen haptics connected"
+                    : "pen haptics connected (couldn't find its Bluetooth device; link status will be a guess)");
                 return true;
             }
         }

@@ -92,7 +92,9 @@ public class TrayApp : ApplicationContext
         _reconnectTimer = new System.Windows.Forms.Timer { Interval = 5000 };
         _reconnectTimer.Tick += (_, _) =>
         {
-            if (!_haptic.IsConnected) TryConnect();
+            // Look for the pen until it has been found once; after that only re-scan if the
+            // link is up but buzzes still fail (for example after re-pairing).
+            if (!_haptic.HasDevice || (_haptic.IsConnected && !_haptic.LastWriteOk)) TryConnect();
             UpdateIcon();
         };
         _reconnectTimer.Start();
@@ -109,6 +111,7 @@ public class TrayApp : ApplicationContext
         bool connected = _haptic.IsConnected;
         if (connected == _iconConnected) return;
         _iconConnected = connected;
+        Log.Write(connected ? "pen link up" : "pen link down (asleep, docked or out of range)");
         _tray.Icon = BuildIcon(connected);
         _tray.Text = connected ? "Slim Pen Haptics — connected" : "Slim Pen Haptics — pen asleep or not found";
     }
