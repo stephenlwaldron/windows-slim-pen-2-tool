@@ -96,7 +96,7 @@
                             </Grid>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="180" />
-                                <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.65" />
+                                <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.65" TextTrimming="CharacterEllipsis" MaxWidth="180" />
                             </StackPanel>
                         </StackPanel>
                     </DataTemplate>
@@ -168,13 +168,13 @@
                             <DockPanel>
                                 <TextBlock x:Name="IntensityText" DockPanel.Dock="Right" Width="110" TextAlignment="Right"
                                            VerticalAlignment="Center" />
-                                <Slider x:Name="IntensitySlider" DockPanel.Dock="Right" Width="200" Margin="16,0,0,0" Minimum="10" Maximum="100"
+                                <Slider x:Name="IntensitySlider" DockPanel.Dock="Right" Width="200" Margin="16,0,0,0" Minimum="0" Maximum="100"
                                         TickFrequency="10" IsSnapToTickEnabled="True" VerticalAlignment="Center"
                                         ValueChanged="IntensitySlider_ValueChanged" />
                                 <StackPanel>
                                     <TextBlock Text="Intensity" Style="{StaticResource CardTitle}" />
                                     <TextBlock Style="{StaticResource CardHint}"
-                                               Text="The strongest it gets. Faster, firmer strokes feel stronger." />
+                                               Text="The strongest it gets. Faster, firmer strokes feel stronger. 0% turns it off." />
                                 </StackPanel>
                             </DockPanel>
                         </Border>

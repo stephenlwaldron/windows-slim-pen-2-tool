@@ -142,6 +142,7 @@ public sealed class TrayApp : IDisposable
     public void Preview(Profile profile)
     {
         _previewTimer.Stop();
+        if (profile.Intensity == 0) return;
         if (profile.Texture == Waveform.None)
         {
             _haptic.Buzz(Waveform.Click, Level(profile, 1.0));
@@ -368,6 +369,20 @@ public sealed class TrayApp : IDisposable
         if (key == null) return;
         if (enabled) key.SetValue(StartupName, StartupCommand);
         else         key.DeleteValue(StartupName, false);
+    }
+
+    // Uninstalling shouldn't leave Windows trying to start an app that is gone.
+    public static void RemoveStartupEntry()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(StartupKey, true);
+            key?.DeleteValue(StartupName, false);
+        }
+        catch (Exception)
+        {
+            // Nothing more to do during an uninstall.
+        }
     }
 
     // Keep an existing entry pointing at this copy of the app, started quietly. Covers people

@@ -69,8 +69,10 @@ public class Settings
     public Profile? ProfileFor(string? exe)
     {
         var app = FindApp(exe);
-        if (app == null) return Default;
-        return app.Enabled ? app.Profile : null;
+        if (app is { Enabled: false }) return null;
+        var profile = app?.Profile ?? Default;
+        // 0% is how the default profile is switched off for people who only want certain apps.
+        return profile.Intensity == 0 ? null : profile;
     }
 
     // A missing or unreadable file just means defaults.
@@ -109,7 +111,7 @@ public class Settings
 
     private static void Validate(Profile profile)
     {
-        if (profile.Intensity < 1 || profile.Intensity > 100) profile.Intensity = DefaultIntensity;
+        if (profile.Intensity > 100) profile.Intensity = DefaultIntensity;     // 0 is valid: it means off
         if (!Enum.IsDefined(profile.Texture)) profile.Texture = Waveform.PencilCont;
     }
 

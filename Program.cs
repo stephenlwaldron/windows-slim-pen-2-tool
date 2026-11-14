@@ -14,7 +14,9 @@ static class Program
     static int Main(string[] args)
     {
         // Must run first: handles the installer's install/update/uninstall hooks.
-        VelopackApp.Build().Run();
+        VelopackApp.Build()
+            .OnBeforeUninstallFastCallback(_ => TrayApp.RemoveStartupEntry())
+            .Run();
 
         // Diagnostic: fire one click and exit. 0 = sent, 1 = pen not found, 2 = write failed.
         if (args.Contains("--buzz"))

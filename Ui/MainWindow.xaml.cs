@@ -85,7 +85,8 @@ public partial class MainWindow : Window
         _nav.Add(new NavItem
         {
             Title    = "Default",
-            Subtitle = "Every app without its own profile",
+            Subtitle = _settings.Default.Intensity == 0 ? "Off, except your listed apps"
+                                                        : "Every app without its own profile",
             Glyph    = DefaultGlyph,
         });
         foreach (var entry in _settings.Apps.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -109,6 +110,7 @@ public partial class MainWindow : Window
     private static string Describe(Profile profile)
     {
         string texture = Settings.TextureChoices.FirstOrDefault(c => c.Waveform == profile.Texture).Label ?? "Off";
+        if (profile.Intensity == 0) return "Off (0%)";
         return profile.Texture == Waveform.None ? "No drag texture" : $"{texture}, {profile.Intensity}%";
     }
 
@@ -181,7 +183,7 @@ public partial class MainWindow : Window
 
         var profile = Editing;
         TextureBox.SelectedIndex = Math.Max(0, Array.FindIndex(Settings.TextureChoices, c => c.Waveform == profile.Texture));
-        IntensitySlider.Value    = Math.Clamp((int)Math.Round(profile.Intensity / 10.0) * 10, 10, 100);
+        IntensitySlider.Value    = Math.Clamp((int)Math.Round(profile.Intensity / 10.0) * 10, 0, 100);
         TouchClickBox.IsChecked  = profile.TouchClick;
         RefreshIntensityText();
 
@@ -191,7 +193,9 @@ public partial class MainWindow : Window
     private void RefreshIntensityText()
     {
         int value = (int)IntensitySlider.Value;
-        IntensityText.Text = value == Settings.DefaultIntensity ? $"{value}% (default)" : $"{value}%";
+        IntensityText.Text = value == 0                         ? "0% (off)"
+                           : value == Settings.DefaultIntensity ? $"{value}% (default)"
+                                                                : $"{value}%";
     }
 
     // Save, then refresh the sidebar subtitles without losing the selection.
