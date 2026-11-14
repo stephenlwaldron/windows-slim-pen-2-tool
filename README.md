@@ -8,7 +8,8 @@ Microsoft restricted the haptics API to approved apps. This tool bypasses that b
 
 - Reads the pen's HID waveform table at startup (feature report `0x42`)
 - Registers for system-wide digitizer input via Raw Input (`RIDEV_INPUTSINK`)
-- Fires a haptic command (`0x41` output report) on every pen-down and pen-up
+- Sends haptic commands to the pen as `0x41` output reports
+- While you drag, plays a continuous texture (ink, pencil, marker or brush) whose intensity follows stroke speed and pressure
 - Runs as a system tray app, starts with Windows
 
 Protocol reverse engineered from [zeroxoneafour/slimpend](https://github.com/zeroxoneafour/slimpend) (Linux).
@@ -23,7 +24,7 @@ Protocol reverse engineered from [zeroxoneafour/slimpend](https://github.com/zer
 
 Download `SlimPenHaptics.exe` from [Releases](../../releases). Run it. Green pen icon in the tray = pen found and haptics active.
 
-Right-click the tray icon to adjust intensity or enable run-at-startup.
+Right-click the tray icon to adjust intensity (80% by default), pick the drag texture (or turn it off), turn on "Click on touch" for a click on every pen-down and pen-up (off by default), or enable run-at-startup.
 
 ## Build from source
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Threading;
 using Microsoft.Win32.SafeHandles;
 
 namespace SlimPenHaptics;
@@ -37,7 +38,14 @@ public class HapticEngine : IDisposable
     private SafeFileHandle? _device;
     private readonly Dictionary<ushort, byte>   _ordinals  = new();
     private readonly Dictionary<ushort, ushort> _durations = new();
-    private bool _disposed;
+    private volatile bool _disposed;
+
+    private readonly Thread         _writer;
+    private readonly AutoResetEvent _wake      = new(false);
+    private readonly object         _queueLock = new();
+    private readonly object         _ioLock    = new();
+    private readonly Queue<byte[]>  _oneShots  = new();
+    private byte[]?                 _pendingTexture;
 
     // ── Win32 ──────────────────────────────────────────────────────────────
 
@@ -145,10 +153,20 @@ public class HapticEngine : IDisposable
 
     public bool IsConnected => _device != null && !_device.IsInvalid;
 
+    public HapticEngine()
+    {
+        // Bluetooth writes can block for a connection interval; keep them off the input thread.
+        _writer = new Thread(WriterLoop) { IsBackground = true, Name = "HapticWriter" };
+        _writer.Start();
+    }
+
     public bool Connect()
     {
-        _device?.Dispose();
-        _device = null;
+        lock (_ioLock)
+        {
+            _device?.Dispose();
+            _device = null;
+        }
 
         var devInfo = SetupDiGetClassDevs(ref Unsafe_HidGuid(), IntPtr.Zero, IntPtr.Zero,
                                           DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
@@ -189,7 +207,7 @@ public class HapticEngine : IDisposable
                     continue;
                 }
 
-                _device = handle;
+                lock (_ioLock) _device = handle;
                 return true;
             }
         }
@@ -200,24 +218,73 @@ public class HapticEngine : IDisposable
         return false;
     }
 
+    // One-shot feedback (click, release, stop). Sent in order; drops any pending texture update.
     public void Buzz(Waveform waveform, byte intensity = 100)
     {
-        if (_device == null || _device.IsInvalid) return;
-        if (!_ordinals.TryGetValue((ushort)waveform, out byte ordinal)) return;
+        var cmd = BuildTrigger(waveform, intensity);
+        if (cmd == null) return;
+        lock (_queueLock)
+        {
+            _pendingTexture = null;
+            _oneShots.Enqueue(cmd);
+        }
+        _wake.Set();
+    }
+
+    // Texture update while dragging. Only the newest one is kept, so a slow link
+    // never builds up a backlog of stale intensities.
+    public void BuzzTexture(Waveform waveform, byte intensity)
+    {
+        var cmd = BuildTrigger(waveform, intensity);
+        if (cmd == null) return;
+        lock (_queueLock) _pendingTexture = cmd;
+        _wake.Set();
+    }
+
+    // How long the pen plays this waveform before it needs retriggering (0 if unknown).
+    public int DurationMs(Waveform waveform) =>
+        _durations.TryGetValue((ushort)waveform, out ushort ms) ? ms : 0;
+
+    private byte[]? BuildTrigger(Waveform waveform, byte intensity)
+    {
+        if (!IsConnected) return null;
+        if (!_ordinals.TryGetValue((ushort)waveform, out byte ordinal)) return null;
 
         // report id, repeat count, intensity, waveform ordinal, cutoff time, retrigger period (u16)
         var cmd = new byte[TriggerReportLength];
         cmd[0] = TriggerReportId;
         cmd[1] = 0x01;
-        cmd[2] = intensity;
+        cmd[2] = Math.Max(intensity, (byte)1);
         cmd[3] = ordinal;
+        return cmd;
+    }
 
-        // WriteFile via SafeFileHandle
-        if (!WriteFile(_device, cmd, (uint)cmd.Length, out _, IntPtr.Zero))
+    private void WriterLoop()
+    {
+        while (!_disposed)
         {
-            // Device disconnected — mark as gone so next call tries to reconnect
-            _device.Dispose();
-            _device = null;
+            _wake.WaitOne();
+            while (true)
+            {
+                byte[]? cmd;
+                lock (_queueLock)
+                {
+                    if (_oneShots.Count > 0) cmd = _oneShots.Dequeue();
+                    else { cmd = _pendingTexture; _pendingTexture = null; }
+                }
+                if (cmd == null) break;
+
+                lock (_ioLock)
+                {
+                    if (_device == null || _device.IsInvalid) continue;
+                    if (!WriteFile(_device, cmd, (uint)cmd.Length, out _, IntPtr.Zero))
+                    {
+                        // Device disconnected — mark as gone so the reconnect timer picks it up
+                        _device.Dispose();
+                        _device = null;
+                    }
+                }
+            }
         }
     }
 
@@ -287,6 +354,7 @@ public class HapticEngine : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        _device?.Dispose();
+        _wake.Set();
+        lock (_ioLock) _device?.Dispose();
     }
 }

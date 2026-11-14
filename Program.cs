@@ -14,6 +14,7 @@ static class Program
             using var haptic = new HapticEngine();
             if (!haptic.Connect()) return 1;
             haptic.Buzz(Waveform.Click);
+            System.Threading.Thread.Sleep(500);     // let the background writer send it
             return haptic.IsConnected ? 0 : 2;
         }
 

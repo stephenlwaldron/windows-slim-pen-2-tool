@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Reflection;
 using System.Windows.Forms;
@@ -12,8 +13,25 @@ public class TrayApp : ApplicationContext
     private readonly HapticEngine _haptic;
     private PenMonitor?           _monitor;
     private bool                  _enabled = true;
-    private byte                  _intensity = 100;
+    private byte                  _intensity = DefaultIntensity;
+    private bool                  _touchClick = false;  // click on pen-down, release on pen-up
+
+    private const byte DefaultIntensity = 80;
     private System.Windows.Forms.Timer _reconnectTimer;
+
+    // Drag texture state
+    private Waveform _texture = Waveform.PencilCont;    // Waveform.None = off
+    private bool     _texturePlaying;
+    private byte     _textureIntensity;
+    private long     _textureSentAt;
+    private readonly Stopwatch _textureClock = Stopwatch.StartNew();
+
+    private const double TextureStartTravel   = 6;      // px moved before a touch counts as a drag
+    private const double TextureMinSpeed      = 20;     // px/s; slower than this is "resting"
+    private const double TextureFullSpeed     = 800;    // px/s that reaches full intensity
+    private const double TextureFloor         = 0.5;    // share of intensity at the slowest drag
+    private const int    TextureMinStep       = 20;     // intensity change (of 255) worth resending
+    private const int    TextureMinIntervalMs = 100;    // retriggering restarts the waveform
 
     private const string StartupKey  = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string StartupName = "SlimPenHaptics";
@@ -52,6 +70,7 @@ public class TrayApp : ApplicationContext
             _monitor = new PenMonitor();
             _monitor.PenDown += OnPenDown;
             _monitor.PenUp   += OnPenUp;
+            _monitor.PenMove += OnPenMove;
             _tray.Icon = BuildIcon(connected: true);
             _tray.Text = "Slim Pen Haptics — connected";
         }
@@ -64,12 +83,64 @@ public class TrayApp : ApplicationContext
 
     private void OnPenDown()
     {
-        if (_enabled) _haptic.Buzz(Waveform.Click, _intensity);
+        _texturePlaying = false;
+        if (_enabled && _touchClick) _haptic.Buzz(Waveform.Click, Level(1.0));
     }
 
     private void OnPenUp()
     {
-        if (_enabled) _haptic.Buzz(Waveform.Release, _intensity);
+        StopTexture();
+        if (_enabled && _touchClick) _haptic.Buzz(Waveform.Release, Level(1.0));
+    }
+
+    // The pen's intensity field runs 1..255; _intensity is the menu percentage of that.
+    private byte Level(double fraction) =>
+        (byte)Math.Clamp(Math.Round(255 * _intensity / 100.0 * fraction), 1, 255);
+
+    // Drag feedback: play the chosen texture while the tip moves, scaling its
+    // intensity with stroke speed and pressure, and go quiet when the pen rests.
+    private void OnPenMove(double speed, double pressure, double travel)
+    {
+        if (!_enabled || _texture == Waveform.None) return;
+
+        if (travel < TextureStartTravel || speed < TextureMinSpeed)
+        {
+            StopTexture();
+            return;
+        }
+
+        // Needs twice the resting speed to start, so it doesn't flutter at the threshold.
+        if (!_texturePlaying && speed < TextureMinSpeed * 2) return;
+
+        double speedPart    = Math.Sqrt(Math.Min(speed / TextureFullSpeed, 1.0));
+        double pressurePart = 0.5 + 0.5 * pressure;
+        double level        = TextureFloor + (1.0 - TextureFloor) * speedPart * pressurePart;
+        byte   target       = Level(level);
+
+        long now     = _textureClock.ElapsedMilliseconds;
+        long elapsed = now - _textureSentAt;
+
+        // The pen plays a texture for a fixed time, so retrigger before it runs out.
+        int  duration  = _haptic.DurationMs(_texture);
+        long keepAlive = duration > 0 ? duration * 3 / 4 : 1000;
+
+        bool changed = Math.Abs(target - _textureIntensity) >= TextureMinStep &&
+                       elapsed >= TextureMinIntervalMs;
+
+        if (!_texturePlaying || changed || elapsed >= keepAlive)
+        {
+            _haptic.BuzzTexture(_texture, target);
+            _texturePlaying   = true;
+            _textureIntensity = target;
+            _textureSentAt    = now;
+        }
+    }
+
+    private void StopTexture()
+    {
+        if (!_texturePlaying) return;
+        _texturePlaying = false;
+        _haptic.Buzz(Waveform.Stop);
     }
 
     private void ToggleEnabled()
@@ -102,14 +173,34 @@ public class TrayApp : ApplicationContext
 
         // Intensity submenu
         var intensityMenu = new ToolStripMenuItem("Intensity");
-        foreach (var (label, val) in new[] { ("Low (40%)", (byte)40), ("Medium (70%)", (byte)70), ("High (100%)", (byte)100) })
+        foreach (byte val in new byte[] { 20, 40, 60, 80, 100 })
         {
+            string label = val == DefaultIntensity ? $"{val}% (Default)" : $"{val}%";
             byte captured = val;
             var item = new ToolStripMenuItem(label) { Checked = _intensity == val };
             item.Click += (_, _) => { _intensity = captured; RebuildMenu(); };
             intensityMenu.DropDownItems.Add(item);
         }
         menu.Items.Add(intensityMenu);
+
+        var touchItem = new ToolStripMenuItem("Click on touch") { Checked = _touchClick };
+        touchItem.Click += (_, _) => { _touchClick = !_touchClick; RebuildMenu(); };
+        menu.Items.Add(touchItem);
+
+        // Drag texture submenu
+        var textureMenu = new ToolStripMenuItem("Drag texture");
+        foreach (var (label, wf) in new[]
+                 {
+                     ("Off", Waveform.None), ("Ink", Waveform.InkCont), ("Pencil", Waveform.PencilCont),
+                     ("Marker", Waveform.MarkerCont), ("Brush", Waveform.BrushCont),
+                 })
+        {
+            Waveform captured = wf;
+            var item = new ToolStripMenuItem(label) { Checked = _texture == wf };
+            item.Click += (_, _) => { StopTexture(); _texture = captured; RebuildMenu(); };
+            textureMenu.DropDownItems.Add(item);
+        }
+        menu.Items.Add(textureMenu);
 
         menu.Items.Add(new ToolStripSeparator());
 
