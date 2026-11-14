@@ -12,6 +12,12 @@ public class Profile
     public byte     Intensity  { get; set; } = Settings.DefaultIntensity;
     public Waveform Texture    { get; set; } = Waveform.PencilCont;    // Waveform.None = off
     public bool     TouchClick { get; set; }
+    public byte     ClickIntensity { get; set; } = Settings.DefaultIntensity;
+
+    // What the profile actually produces. 0% on a slider switches that part off.
+    [JsonIgnore] public bool HasTexture => Texture != Waveform.None && Intensity > 0;
+    [JsonIgnore] public bool HasClick   => TouchClick && ClickIntensity > 0;
+    [JsonIgnore] public bool IsSilent   => !HasTexture && !HasClick;
 
     public Profile Clone() => (Profile)MemberwiseClone();
 }
@@ -70,9 +76,7 @@ public class Settings
     {
         var app = FindApp(exe);
         if (app is { Enabled: false }) return null;
-        var profile = app?.Profile ?? Default;
-        // 0% is how the default profile is switched off for people who only want certain apps.
-        return profile.Intensity == 0 ? null : profile;
+        return app?.Profile ?? Default;
     }
 
     // A missing or unreadable file just means defaults.
@@ -111,7 +115,9 @@ public class Settings
 
     private static void Validate(Profile profile)
     {
-        if (profile.Intensity > 100) profile.Intensity = DefaultIntensity;     // 0 is valid: it means off
+        // 0 is valid on both: it means off
+        if (profile.Intensity > 100)      profile.Intensity      = DefaultIntensity;
+        if (profile.ClickIntensity > 100) profile.ClickIntensity = DefaultIntensity;
         if (!Enum.IsDefined(profile.Texture)) profile.Texture = Waveform.PencilCont;
     }
 

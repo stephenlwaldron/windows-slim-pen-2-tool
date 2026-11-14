@@ -85,8 +85,8 @@ public partial class MainWindow : Window
         _nav.Add(new NavItem
         {
             Title    = "Default",
-            Subtitle = _settings.Default.Intensity == 0 ? "Off, except your listed apps"
-                                                        : "Every app without its own profile",
+            Subtitle = _settings.Default.IsSilent ? "Off, except your listed apps"
+                                                  : "Every app without its own profile",
             Glyph    = DefaultGlyph,
         });
         foreach (var entry in _settings.Apps.OrderBy(a => a.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -110,8 +110,9 @@ public partial class MainWindow : Window
     private static string Describe(Profile profile)
     {
         string texture = Settings.TextureChoices.FirstOrDefault(c => c.Waveform == profile.Texture).Label ?? "Off";
-        if (profile.Intensity == 0) return "Off (0%)";
-        return profile.Texture == Waveform.None ? "No drag texture" : $"{texture}, {profile.Intensity}%";
+        if (profile.IsSilent) return "Off";
+        if (!profile.HasTexture) return $"Click only, {profile.ClickIntensity}%";
+        return $"{texture}, {profile.Intensity}%";
     }
 
     private void NavList_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -183,19 +184,36 @@ public partial class MainWindow : Window
 
         var profile = Editing;
         TextureBox.SelectedIndex = Math.Max(0, Array.FindIndex(Settings.TextureChoices, c => c.Waveform == profile.Texture));
-        IntensitySlider.Value    = Math.Clamp((int)Math.Round(profile.Intensity / 10.0) * 10, 0, 100);
+        IntensitySlider.Value    = SliderValue(profile.Intensity);
         TouchClickBox.IsChecked  = profile.TouchClick;
+        ClickIntensitySlider.Value = SliderValue(profile.ClickIntensity);
         RefreshIntensityText();
+        RefreshClickControls();
 
         _loading = false;
     }
 
+    // Sliders move in steps of 10.
+    private static double SliderValue(byte percent) => Math.Clamp((int)Math.Round(percent / 10.0) * 10, 0, 100);
+
+    private static string PercentLabel(double value) =>
+        value == 0                         ? "0% (off)"
+      : value == Settings.DefaultIntensity ? $"{value}% (default)"
+                                           : $"{value}%";
+
     private void RefreshIntensityText()
     {
-        int value = (int)IntensitySlider.Value;
-        IntensityText.Text = value == 0                         ? "0% (off)"
-                           : value == Settings.DefaultIntensity ? $"{value}% (default)"
-                                                                : $"{value}%";
+        IntensityText.Text      = PercentLabel(IntensitySlider.Value);
+        ClickIntensityText.Text = PercentLabel(ClickIntensitySlider.Value);
+    }
+
+    // The slider and Confirm button for the click only mean something while the click is on.
+    private void RefreshClickControls()
+    {
+        bool on = TouchClickBox.IsChecked == true;
+        ClickIntensityCard.IsEnabled = on;
+        ClickIntensityCard.Opacity   = on ? 1.0 : 0.45;
+        ConfirmClickButton.IsEnabled = on;
     }
 
     // Save, then refresh the sidebar subtitles without losing the selection.
@@ -221,8 +239,16 @@ public partial class MainWindow : Window
 
     private void IntensitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_loading || IntensityText == null) return;
+        if (_loading) return;
         Editing.Intensity = (byte)IntensitySlider.Value;
+        RefreshIntensityText();
+        Changed();
+    }
+
+    private void ClickIntensitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_loading) return;
+        Editing.ClickIntensity = (byte)ClickIntensitySlider.Value;
         RefreshIntensityText();
         Changed();
     }
@@ -231,10 +257,13 @@ public partial class MainWindow : Window
     {
         if (_loading) return;
         Editing.TouchClick = TouchClickBox.IsChecked == true;
+        RefreshClickControls();
         Changed();
     }
 
-    private void FeelButton_Click(object sender, RoutedEventArgs e) => _app.Preview(Editing);
+    private void ConfirmTextureButton_Click(object sender, RoutedEventArgs e) => _app.Preview(Editing);
+
+    private void ConfirmClickButton_Click(object sender, RoutedEventArgs e) => _app.PreviewClick(Editing);
 
     private void RemoveButton_Click(object sender, RoutedEventArgs e)
     {

@@ -152,14 +152,15 @@
                     <StackPanel x:Name="ProfileCards">
                         <Border Style="{StaticResource Card}">
                             <DockPanel>
-                                <Button x:Name="FeelButton" DockPanel.Dock="Right" Content="Feel it" Padding="14,6"
-                                        Margin="8,0,0,0" VerticalAlignment="Center" Click="FeelButton_Click" />
+                                <Button x:Name="ConfirmTextureButton" DockPanel.Dock="Right" Content="Confirm" Padding="14,6"
+                                        Margin="8,0,0,0" VerticalAlignment="Center" Click="ConfirmTextureButton_Click"
+                                        ToolTip="Plays this texture on the pen" />
                                 <ComboBox x:Name="TextureBox" DockPanel.Dock="Right" Width="150" Margin="16,0,0,0" VerticalAlignment="Center"
                                           SelectionChanged="TextureBox_SelectionChanged" />
                                 <StackPanel>
                                     <TextBlock Text="Drag texture" Style="{StaticResource CardTitle}" />
                                     <TextBlock Style="{StaticResource CardHint}"
-                                               Text="What you feel while the pen moves. Hold the pen and press Feel it to try one." />
+                                               Text="What you feel while the pen moves. Confirm to set." />
                                 </StackPanel>
                             </DockPanel>
                         </Border>
@@ -172,9 +173,9 @@
                                         TickFrequency="10" IsSnapToTickEnabled="True" VerticalAlignment="Center"
                                         ValueChanged="IntensitySlider_ValueChanged" />
                                 <StackPanel>
-                                    <TextBlock Text="Intensity" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Text="Texture intensity" Style="{StaticResource CardTitle}" />
                                     <TextBlock Style="{StaticResource CardHint}"
-                                               Text="The strongest it gets. Faster, firmer strokes feel stronger. 0% turns it off." />
+                                               Text="Stronger with faster, firmer strokes. 0% turns it off." />
                                 </StackPanel>
                             </DockPanel>
                         </Border>
@@ -182,11 +183,29 @@
                         <Border Style="{StaticResource Card}">
                             <DockPanel>
                                 <CheckBox x:Name="TouchClickBox" DockPanel.Dock="Right" VerticalAlignment="Center"
-                                          Click="TouchClickBox_Click" />
+                                          Margin="16,0,0,0" Click="TouchClickBox_Click" />
+                                <Button x:Name="ConfirmClickButton" DockPanel.Dock="Right" Content="Confirm" Padding="14,6"
+                                        Margin="16,0,0,0" VerticalAlignment="Center" Click="ConfirmClickButton_Click"
+                                        ToolTip="Plays the click on the pen" />
                                 <StackPanel>
                                     <TextBlock Text="Click on touch" Style="{StaticResource CardTitle}" />
                                     <TextBlock Style="{StaticResource CardHint}"
-                                               Text="A small click each time the tip touches down and lifts." />
+                                               Text="A small click each time the tip touches down and lifts. Confirm to set." />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border x:Name="ClickIntensityCard" Style="{StaticResource Card}">
+                            <DockPanel>
+                                <TextBlock x:Name="ClickIntensityText" DockPanel.Dock="Right" Width="110" TextAlignment="Right"
+                                           VerticalAlignment="Center" />
+                                <Slider x:Name="ClickIntensitySlider" DockPanel.Dock="Right" Width="200" Margin="16,0,0,0" Minimum="0" Maximum="100"
+                                        TickFrequency="10" IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                        ValueChanged="ClickIntensitySlider_ValueChanged" />
+                                <StackPanel>
+                                    <TextBlock Text="Click intensity" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="How strong the click is, separate from the texture." />
                                 </StackPanel>
                             </DockPanel>
                         </Border>

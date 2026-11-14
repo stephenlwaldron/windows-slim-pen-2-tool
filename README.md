@@ -5,15 +5,15 @@
 The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else.
 
 <p align="center">
-  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Feel it button, intensity at 60%, and click on touch enabled. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
+  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, and click on touch enabled with its own intensity slider. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
 </p>
 
 ## What you get
 
-- **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Feel it** to try one without drawing.
+- **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Confirm** to feel it on the pen without drawing.
 - **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack). The app switches automatically based on where you're drawing.
-- **Click on touch (optional):** a click when the tip touches down and lifts. Off by default.
-- **Intensity:** 0% to 100%, 80% by default. Set the Default profile to 0% if you only want haptics in the apps you list.
+- **Click on touch (optional):** a click when the tip touches down and lifts, with its own intensity slider. Off by default.
+- **Intensity:** 0% to 100%, 80% by default, set separately for the texture and the click. Turn the Default profile down to 0% if you only want haptics in the apps you list.
 - **Automatic updates** when installed, and it remembers your settings.
 - A settings window in the Windows 11 style, with light and dark mode.
 

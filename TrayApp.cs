@@ -142,14 +142,15 @@ public sealed class TrayApp : IDisposable
     public void Preview(Profile profile)
     {
         _previewTimer.Stop();
-        if (profile.Intensity == 0) return;
-        if (profile.Texture == Waveform.None)
-        {
-            _haptic.Buzz(Waveform.Click, Level(profile, 1.0));
-            return;
-        }
-        _haptic.BuzzTexture(profile.Texture, Level(profile, 1.0));
+        if (!profile.HasTexture) return;
+        _haptic.BuzzTexture(profile.Texture, Level(profile.Intensity, 1.0));
         _previewTimer.Start();
+    }
+
+    // Play the touch click once at a profile's click intensity.
+    public void PreviewClick(Profile profile)
+    {
+        if (profile.ClickIntensity > 0) _haptic.Buzz(Waveform.Click, Level(profile.ClickIntensity, 1.0));
     }
 
     public void ShowWindow()
@@ -230,15 +231,15 @@ public sealed class TrayApp : IDisposable
     {
         _texturePlaying = false;
         ResolveProfile();
-        if (Settings.Enabled && _profile is { TouchClick: true })
-            _haptic.Buzz(Waveform.Click, Level(_profile, 1.0));
+        if (Settings.Enabled && _profile is { HasClick: true })
+            _haptic.Buzz(Waveform.Click, Level(_profile.ClickIntensity, 1.0));
     }
 
     private void OnPenUp()
     {
         StopTexture();
-        if (Settings.Enabled && _profile is { TouchClick: true })
-            _haptic.Buzz(Waveform.Release, Level(_profile, 1.0));
+        if (Settings.Enabled && _profile is { HasClick: true })
+            _haptic.Buzz(Waveform.Release, Level(_profile.ClickIntensity, 1.0));
     }
 
     // Pick the profile for whichever app the pen just touched.
@@ -264,16 +265,16 @@ public sealed class TrayApp : IDisposable
         }
     }
 
-    // The pen's intensity field runs 1..255; a profile's intensity is a percentage of that.
-    private static byte Level(Profile profile, double fraction) =>
-        (byte)Math.Clamp(Math.Round(255 * profile.Intensity / 100.0 * fraction), 1, 255);
+    // The pen's intensity field runs 1..255; the sliders are a percentage of that.
+    private static byte Level(byte percent, double fraction) =>
+        (byte)Math.Clamp(Math.Round(255 * percent / 100.0 * fraction), 1, 255);
 
     // Drag feedback: play the chosen texture while the tip moves, scaling its
     // intensity with stroke speed and pressure, and go quiet when the pen rests.
     private void OnPenMove(double speed, double pressure, double travel)
     {
         var profile = _profile;
-        if (!Settings.Enabled || profile == null || profile.Texture == Waveform.None) return;
+        if (!Settings.Enabled || profile == null || !profile.HasTexture) return;
 
         if (travel < TextureStartTravel || speed < TextureMinSpeed)
         {
@@ -287,7 +288,7 @@ public sealed class TrayApp : IDisposable
         double speedPart    = Math.Sqrt(Math.Min(speed / TextureFullSpeed, 1.0));
         double pressurePart = 0.5 + 0.5 * pressure;
         double level        = TextureFloor + (1.0 - TextureFloor) * speedPart * pressurePart;
-        byte   target       = Level(profile, level);
+        byte   target       = Level(profile.Intensity, level);
 
         long now     = _textureClock.ElapsedMilliseconds;
         long elapsed = now - _textureSentAt;
