@@ -70,7 +70,7 @@ If it works (or doesn't) on your device, please [open an issue](../../issues) so
 - On each pen-down, looks up the app under the pen and applies its profile
 - Installer and updates are built with [Velopack](https://velopack.io), which updates from this repo's GitHub releases
 
-Inspired by [zeroxoneafour/slimpend](https://github.com/zeroxoneafour/slimpend), which does the same on Linux.
+The pen's haptic commands were first worked out by [zeroxoneafour/slimpend](https://github.com/zeroxoneafour/slimpend), a Linux project for the same pen, which was the starting point for the protocol here.
 
 ## Build from source
 
