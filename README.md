@@ -58,6 +58,7 @@ Get the latest files from [Releases](../../releases/latest).
 | Device | Windows | Works |
 | --- | --- | --- |
 | Surface Pro 9 | Windows 11 | Yes |
+| Surface Laptop Studio (1st gen) | Windows 11 | Yes, [reported by a user](../../issues/1) |
 
 If it works (or doesn't) on your device, please [open an issue](../../issues) so this list can grow.
 
