@@ -1,0 +1,261 @@
+<Window x:Class="SlimPenHaptics.Ui.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Slim Pen Haptics"
+        Icon="pack://application:,,,/assets/app.ico"
+        Width="900" Height="640" MinWidth="760" MinHeight="520"
+        WindowStartupLocation="CenterScreen">
+
+    <Window.Resources>
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background" Value="{DynamicResource CardBackgroundFillColorDefaultBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="Padding" Value="18,14" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+        <!-- Sidebar rows: a soft rounded highlight instead of a solid selection block -->
+        <Style x:Key="NavRow" TargetType="ListBoxItem">
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Row" Background="Transparent" CornerRadius="6" Padding="8,6">
+                            <DockPanel>
+                                <Border x:Name="Pill" DockPanel.Dock="Left" Width="3" Height="18" CornerRadius="1.5" Margin="0,0,8,0"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}" Visibility="Hidden" />
+                                <ContentPresenter />
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                                <Setter TargetName="Pill" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Symbols from Windows' own icon font (Windows 11, with the Windows 10 font as fallback) -->
+        <Style x:Key="Glyph" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe Fluent Icons, Segoe MDL2 Assets" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="CardTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
+        <Style x:Key="CardHint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,2,0,0" />
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="270" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar: profiles on top, app-wide things at the bottom -->
+        <DockPanel Grid.Column="0" Margin="12,16,8,12">
+            <TextBlock DockPanel.Dock="Top" Text="Profiles" FontSize="12" FontWeight="SemiBold" Opacity="0.65"
+                       Margin="12,2,0,8" />
+
+            <Border DockPanel.Dock="Bottom" Style="{StaticResource Card}" Padding="12,10" Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <Ellipse x:Name="StatusDot" Width="10" Height="10" Margin="0,0,10,0" VerticalAlignment="Center" />
+                    <TextBlock x:Name="StatusText" TextWrapping="Wrap" MaxWidth="200" VerticalAlignment="Center" />
+                </StackPanel>
+            </Border>
+
+            <ToggleButton x:Name="GeneralButton" DockPanel.Dock="Bottom" Content="General settings"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,8" Margin="0,4,0,0"
+                          Click="GeneralButton_Click" Checked="GeneralButton_Checked" />
+            <Button x:Name="AddAppButton" DockPanel.Dock="Bottom" Content="+  Add an app"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,8" Margin="0,8,0,0"
+                    Click="AddAppButton_Click" />
+
+            <ListBox x:Name="NavList" SelectionChanged="NavList_SelectionChanged"
+                     Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource NavRow}"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal" Margin="2,4">
+                            <Grid Width="24" Height="24" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Glyph}" Style="{StaticResource Glyph}" FontSize="20" />
+                                <Image Source="{Binding Icon}" />
+                            </Grid>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" MaxWidth="180" />
+                                <TextBlock Text="{Binding Subtitle}" FontSize="11" Opacity="0.65" />
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <!-- Content -->
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <Grid Margin="20,16,24,20">
+
+                <!-- A profile: the default one, or one app's -->
+                <StackPanel x:Name="ProfilePane">
+
+                    <Border x:Name="WelcomeBanner" Style="{StaticResource Card}" Visibility="Collapsed"
+                            Background="{DynamicResource SystemFillColorSuccessBackgroundBrush}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="Got it" Padding="14,6" Margin="12,0,0,0"
+                                    VerticalAlignment="Center" Click="WelcomeDismiss_Click" />
+                            <StackPanel>
+                                <TextBlock Text="Slim Pen Haptics is running" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource CardHint}" Opacity="0.85"
+                                           Text="It keeps working after you close this window. Look for the pen icon in the system tray next to the clock (click the ^ arrow if it's hidden), or open it again from the Start menu." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <DockPanel Margin="0,4,0,16">
+                        <Button x:Name="RemoveButton" DockPanel.Dock="Right" Content="Remove app" Padding="14,6"
+                                VerticalAlignment="Center" Click="RemoveButton_Click" />
+                        <Grid Width="40" Height="40" Margin="0,0,14,0" VerticalAlignment="Center">
+                            <TextBlock x:Name="HeaderGlyph" Style="{StaticResource Glyph}" FontSize="34" />
+                            <Image x:Name="HeaderIcon" />
+                        </Grid>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="HeaderTitle" FontSize="24" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock x:Name="HeaderHint" Style="{StaticResource CardHint}" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <Border x:Name="AppEnabledCard" Style="{StaticResource Card}">
+                        <DockPanel>
+                            <CheckBox x:Name="AppEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                      Click="AppEnabledBox_Click" />
+                            <StackPanel>
+                                <TextBlock Text="Haptics in this app" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource CardHint}"
+                                           Text="Turn this off for apps that already have their own pen haptics, so the two don't stack." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <StackPanel x:Name="ProfileCards">
+                        <Border Style="{StaticResource Card}">
+                            <DockPanel>
+                                <Button x:Name="FeelButton" DockPanel.Dock="Right" Content="Feel it" Padding="14,6"
+                                        Margin="8,0,0,0" VerticalAlignment="Center" Click="FeelButton_Click" />
+                                <ComboBox x:Name="TextureBox" DockPanel.Dock="Right" Width="150" Margin="16,0,0,0" VerticalAlignment="Center"
+                                          SelectionChanged="TextureBox_SelectionChanged" />
+                                <StackPanel>
+                                    <TextBlock Text="Drag texture" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="What you feel while the pen moves. Hold the pen and press Feel it to try one." />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <DockPanel>
+                                <TextBlock x:Name="IntensityText" DockPanel.Dock="Right" Width="110" TextAlignment="Right"
+                                           VerticalAlignment="Center" />
+                                <Slider x:Name="IntensitySlider" DockPanel.Dock="Right" Width="200" Margin="16,0,0,0" Minimum="10" Maximum="100"
+                                        TickFrequency="10" IsSnapToTickEnabled="True" VerticalAlignment="Center"
+                                        ValueChanged="IntensitySlider_ValueChanged" />
+                                <StackPanel>
+                                    <TextBlock Text="Intensity" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="The strongest it gets. Faster, firmer strokes feel stronger." />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <DockPanel>
+                                <CheckBox x:Name="TouchClickBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                          Click="TouchClickBox_Click" />
+                                <StackPanel>
+                                    <TextBlock Text="Click on touch" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="A small click each time the tip touches down and lifts." />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- App-wide settings -->
+                <StackPanel x:Name="GeneralPane" Visibility="Collapsed">
+                    <TextBlock Text="General settings" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,16" />
+
+                    <Border Style="{StaticResource Card}">
+                        <DockPanel>
+                            <CheckBox x:Name="EnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center" Click="EnabledBox_Click" />
+                            <StackPanel>
+                                <TextBlock Text="Haptics" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource CardHint}" Text="The master switch for every app." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <DockPanel>
+                            <CheckBox x:Name="StartupBox" DockPanel.Dock="Right" VerticalAlignment="Center" Click="StartupBox_Click" />
+                            <StackPanel>
+                                <TextBlock Text="Start with Windows" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource CardHint}" Text="Starts quietly in the tray when you sign in." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <DockPanel>
+                            <CheckBox x:Name="NotifyBox" DockPanel.Dock="Right" VerticalAlignment="Center" Click="NotifyBox_Click" />
+                            <StackPanel>
+                                <TextBlock Text="Notification at startup" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource CardHint}" Text="A brief note that it started and whether the pen was found." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button x:Name="RestartUpdateButton" Content="Restart to update" Padding="14,6" Margin="0,0,8,0"
+                                        Visibility="Collapsed" Click="RestartUpdateButton_Click" />
+                                <Button x:Name="CheckUpdateButton" Content="Check for updates" Padding="14,6"
+                                        Click="CheckUpdateButton_Click" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock x:Name="VersionText" Style="{StaticResource CardTitle}" />
+                                <TextBlock x:Name="UpdateText" Style="{StaticResource CardHint}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="Open log folder" Padding="14,6" Margin="0,0,8,0" Click="LogFolder_Click" />
+                                <Button Content="GitHub" Padding="14,6" Click="GitHub_Click" />
+                            </StackPanel>
+                            <StackPanel>
+                                <TextBlock Text="Help" Style="{StaticResource CardTitle}" />
+                                <TextBlock Style="{StaticResource CardHint}" Text="Report a problem on GitHub and attach the log." />
+                            </StackPanel>
+                        </DockPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Window>

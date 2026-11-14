@@ -221,7 +221,10 @@ public class HapticEngine : IDisposable
 
                 // The pen exposes several HID collections under the same VID/PID;
                 // only the digitizer one carries the haptic reports.
+                // Asking a sleeping pen for its waveform table blocks for seconds while
+                // Windows waits on Bluetooth, so don't ask unless the link is up.
                 if (!IsHapticCollection(handle, out int featureLength) ||
+                    PenLink.IsConnected(PenLink.FindBluetoothDevice(detail.DevicePath)) == false ||
                     !BuildWaveformTable(handle, featureLength))
                 {
                     handle.Dispose();

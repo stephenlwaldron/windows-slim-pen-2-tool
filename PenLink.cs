@@ -67,8 +67,9 @@ public static class PenLink
     }
 
     // null when Windows can't say (device gone, property missing).
-    public static bool? IsConnected(string bluetoothDeviceId)
+    public static bool? IsConnected(string? bluetoothDeviceId)
     {
+        if (bluetoothDeviceId == null) return null;
         if (CM_Locate_DevNodeW(out uint node, bluetoothDeviceId, 0) != CR_SUCCESS) return null;
 
         var value = new byte[4];

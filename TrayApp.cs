@@ -1,23 +1,35 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
-using System.Reflection;
+using System.IO;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
 namespace SlimPenHaptics;
 
-public class TrayApp : ApplicationContext
+// The app itself: tray icon, pen input, and turning strokes into haptics.
+// The settings window (Ui.MainWindow) is a view over this.
+public sealed class TrayApp : IDisposable
 {
     private readonly NotifyIcon   _tray;
-    private readonly HapticEngine _haptic;
-    private PenMonitor?           _monitor;
-    private bool                  _enabled = true;
-    private readonly Settings     _settings = Settings.Load();
-    private SettingsForm?         _window;
+    private readonly HapticEngine _haptic = new();
+    private readonly PenMonitor   _monitor;
+    private Ui.MainWindow?        _window;
 
-    private System.Windows.Forms.Timer _reconnectTimer;
-    private bool                  _iconConnected;
+    private readonly System.Windows.Forms.Timer _reconnectTimer;
+    private readonly System.Windows.Forms.Timer _previewTimer;
+    private bool _iconActive;
+    private bool _disposed;
+
+    public Settings Settings { get; } = Settings.Load();
+    public Updater  Updater  { get; } = new();
+
+    // The app under the pen and the profile that applies there (null = haptics off in it)
+    private string?  _activeExe;
+    private Profile? _profile;
+    private readonly List<string> _recentApps = new();
+    private static readonly string OwnExe = Path.GetFileName(Environment.ProcessPath ?? "SlimPenHaptics.exe");
 
     // Waking the pen's Bluetooth link after it has been idle
     private long _penSeenAt;
@@ -25,10 +37,12 @@ public class TrayApp : ApplicationContext
     private long _wakeProbeAt;
     private bool _wakeProbed;
 
-    private const int WakeIdleMs    = 2000;     // no pen input for this long counts as "put away"
-    private const int WakeWindowMs  = 8000;     // how long to keep trying after it reappears
-    private const int WakeProbeMs   = 400;      // gap between tries
+    private const int WakeIdleMs     = 2000;    // no pen input for this long counts as "put away"
+    private const int WakeWindowMs   = 8000;    // how long to keep trying after it reappears
+    private const int WakeProbeMs    = 400;     // gap between tries
     private const int TextureRetryMs = 150;     // resend a texture that didn't reach the pen
+    private const int PreviewMs      = 1200;    // length of a "Feel it" preview
+    private const int RecentAppCount = 8;
 
     // Drag texture state
     private bool     _texturePlaying;
@@ -43,22 +57,23 @@ public class TrayApp : ApplicationContext
     private const int    TextureMinStep       = 20;     // intensity change (of 255) worth resending
     private const int    TextureMinIntervalMs = 100;    // retriggering restarts the waveform
 
-    private const string StartupKey  = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
-    private const string StartupName = "SlimPenHaptics";
+    private const string StartupKey     = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    private const string StartupName    = "SlimPenHaptics";
+    public  const string BackgroundFlag = "--background";
 
-    public TrayApp()
+    // background: started by Windows at sign-in, so stay out of the way.
+    public TrayApp(bool background)
     {
-        _haptic = new HapticEngine();
+        _profile = Settings.Default;
 
         _tray = new NotifyIcon
         {
-            Icon    = BuildIcon(connected: false),
+            Icon    = BuildIcon(active: false),
             Visible = true,
             Text    = "Slim Pen Haptics",
         };
-
         _tray.ContextMenuStrip = BuildMenu();
-        _tray.DoubleClick += (_, _) => ShowWindow();
+        _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowWindow(); };
 
         // Pen input comes through the screen, so it can be watched before the pen's
         // Bluetooth side (the haptics) is reachable.
@@ -68,27 +83,26 @@ public class TrayApp : ApplicationContext
         _monitor.PenUp   += OnPenUp;
         _monitor.PenMove += OnPenMove;
 
-        // Try connecting to the pen on startup
         TryConnect();
-        Log.Write(_haptic.IsConnected ? "started" : "started; pen not reachable yet (asleep or not paired)");
+        Log.Write($"started v{Updater.Version}" + (_haptic.IsConnected ? "" : "; pen not reachable yet (asleep or not paired)"));
 
-        // A tray app starts invisibly, so say so: a window the first time, a notification after.
-        if (!_settings.WelcomeShown)
+        RepairStartupEntry();
+
+        // A tray app starts invisibly, so say so: the window when the user launched it,
+        // a notification when Windows did.
+        if (!background || !Settings.WelcomeShown)
         {
-            _settings.WelcomeShown = true;
-            _settings.Save();
             ShowWindow();
         }
-        else if (_settings.StartupNotification)
+        else if (Settings.StartupNotification)
         {
             _tray.ShowBalloonTip(4000, "Slim Pen Haptics is running",
                 _haptic.IsConnected
-                    ? "Pen connected. Right-click the pen icon in the tray for settings."
+                    ? "Pen connected. Click the pen icon in the tray for settings."
                     : "Pen not found yet. It will connect when the pen wakes up.",
                 ToolTipIcon.Info);
         }
 
-        // Reconnect timer — pen may pair after app starts
         _reconnectTimer = new System.Windows.Forms.Timer { Interval = 5000 };
         _reconnectTimer.Tick += (_, _) =>
         {
@@ -98,7 +112,65 @@ public class TrayApp : ApplicationContext
             UpdateIcon();
         };
         _reconnectTimer.Start();
+
+        _previewTimer = new System.Windows.Forms.Timer { Interval = PreviewMs };
+        _previewTimer.Tick += (_, _) =>
+        {
+            _previewTimer.Stop();
+            _haptic.Buzz(Waveform.Stop);
+        };
+
+        _ = Updater.CheckAsync();
     }
+
+    public bool IsPenConnected => _haptic.IsConnected;
+
+    // Recently drawn-in apps, newest first, as full exe paths.
+    public IReadOnlyList<string> RecentApps => _recentApps;
+
+    // Called by the settings window after it changes anything.
+    public void SettingsChanged()
+    {
+        StopTexture();
+        Settings.Save();
+        _profile = Settings.ProfileFor(_activeExe);
+        RebuildMenu();
+        UpdateIcon();
+    }
+
+    // "Feel it": play a profile's texture briefly, without drawing.
+    public void Preview(Profile profile)
+    {
+        _previewTimer.Stop();
+        if (profile.Texture == Waveform.None)
+        {
+            _haptic.Buzz(Waveform.Click, Level(profile, 1.0));
+            return;
+        }
+        _haptic.BuzzTexture(profile.Texture, Level(profile, 1.0));
+        _previewTimer.Start();
+    }
+
+    public void ShowWindow()
+    {
+        if (_window == null)
+        {
+            _window = new Ui.MainWindow(this);
+            _window.Closed += (_, _) => _window = null;
+        }
+        _window.Show();
+        if (_window.WindowState == System.Windows.WindowState.Minimized)
+            _window.WindowState = System.Windows.WindowState.Normal;
+        _window.Activate();
+    }
+
+    public void Exit()
+    {
+        Dispose();
+        System.Windows.Application.Current?.Shutdown();
+    }
+
+    // ── Pen link ───────────────────────────────────────────────────────────
 
     private void TryConnect()
     {
@@ -109,11 +181,14 @@ public class TrayApp : ApplicationContext
     private void UpdateIcon()
     {
         bool connected = _haptic.IsConnected;
-        if (connected == _iconConnected) return;
-        _iconConnected = connected;
-        Log.Write(connected ? "pen link up" : "pen link down (asleep, docked or out of range)");
-        _tray.Icon = BuildIcon(connected);
-        _tray.Text = connected ? "Slim Pen Haptics — connected" : "Slim Pen Haptics — pen asleep or not found";
+        bool active    = connected && Settings.Enabled;
+        _tray.Text = !Settings.Enabled ? "Slim Pen Haptics — turned off"
+                   : connected         ? "Slim Pen Haptics — connected"
+                                       : "Slim Pen Haptics — pen asleep or not found";
+        if (active == _iconActive) return;
+        _iconActive = active;
+        if (Settings.Enabled) Log.Write(connected ? "pen link up" : "pen link down (asleep, docked or out of range)");
+        _tray.Icon = BuildIcon(active);
     }
 
     // The pen drops its Bluetooth link when it sleeps, while its tip keeps working through
@@ -124,12 +199,12 @@ public class TrayApp : ApplicationContext
         long now  = _textureClock.ElapsedMilliseconds;
         bool woke = now - _penSeenAt > WakeIdleMs;
         _penSeenAt = now;
-        if (!_enabled) return;
+        if (!Settings.Enabled) return;
 
         if (woke)
         {
-            _wakeUntil  = now + WakeWindowMs;
-            _wakeProbed = false;
+            _wakeUntil   = now + WakeWindowMs;
+            _wakeProbed  = false;
             _wakeProbeAt = now - WakeProbeMs;
         }
 
@@ -148,27 +223,56 @@ public class TrayApp : ApplicationContext
         else                   TryConnect();
     }
 
+    // ── Strokes ────────────────────────────────────────────────────────────
+
     private void OnPenDown()
     {
         _texturePlaying = false;
-        if (_enabled && _settings.TouchClick) _haptic.Buzz(Waveform.Click, Level(1.0));
+        ResolveProfile();
+        if (Settings.Enabled && _profile is { TouchClick: true })
+            _haptic.Buzz(Waveform.Click, Level(_profile, 1.0));
     }
 
     private void OnPenUp()
     {
         StopTexture();
-        if (_enabled && _settings.TouchClick) _haptic.Buzz(Waveform.Release, Level(1.0));
+        if (Settings.Enabled && _profile is { TouchClick: true })
+            _haptic.Buzz(Waveform.Release, Level(_profile, 1.0));
     }
 
-    // The pen's intensity field runs 1..255; _settings.Intensity is the menu percentage of that.
-    private byte Level(double fraction) =>
-        (byte)Math.Clamp(Math.Round(255 * _settings.Intensity / 100.0 * fraction), 1, 255);
+    // Pick the profile for whichever app the pen just touched.
+    private void ResolveProfile()
+    {
+        string? path = AppResolver.ExeUnderPen();
+        string? exe  = path == null ? null : Path.GetFileName(path);
+
+        _profile = Settings.ProfileFor(exe);
+
+        if (!string.Equals(exe, _activeExe, StringComparison.OrdinalIgnoreCase))
+        {
+            _activeExe = exe;
+            var app = Settings.FindApp(exe);
+            if (app != null) Log.Write($"pen in {exe}: {(app.Enabled ? "its own profile" : "haptics off")}");
+        }
+
+        if (path != null && !string.Equals(exe, OwnExe, StringComparison.OrdinalIgnoreCase))
+        {
+            _recentApps.RemoveAll(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            _recentApps.Insert(0, path);
+            if (_recentApps.Count > RecentAppCount) _recentApps.RemoveAt(RecentAppCount);
+        }
+    }
+
+    // The pen's intensity field runs 1..255; a profile's intensity is a percentage of that.
+    private static byte Level(Profile profile, double fraction) =>
+        (byte)Math.Clamp(Math.Round(255 * profile.Intensity / 100.0 * fraction), 1, 255);
 
     // Drag feedback: play the chosen texture while the tip moves, scaling its
     // intensity with stroke speed and pressure, and go quiet when the pen rests.
     private void OnPenMove(double speed, double pressure, double travel)
     {
-        if (!_enabled || _settings.Texture == Waveform.None) return;
+        var profile = _profile;
+        if (!Settings.Enabled || profile == null || profile.Texture == Waveform.None) return;
 
         if (travel < TextureStartTravel || speed < TextureMinSpeed)
         {
@@ -182,23 +286,23 @@ public class TrayApp : ApplicationContext
         double speedPart    = Math.Sqrt(Math.Min(speed / TextureFullSpeed, 1.0));
         double pressurePart = 0.5 + 0.5 * pressure;
         double level        = TextureFloor + (1.0 - TextureFloor) * speedPart * pressurePart;
-        byte   target       = Level(level);
+        byte   target       = Level(profile, level);
 
         long now     = _textureClock.ElapsedMilliseconds;
         long elapsed = now - _textureSentAt;
 
         // The pen plays a texture for a fixed time, so retrigger before it runs out.
-        int  duration  = _haptic.DurationMs(_settings.Texture);
+        int  duration  = _haptic.DurationMs(profile.Texture);
         long keepAlive = duration > 0 ? duration * 3 / 4 : 1000;
 
         bool changed = Math.Abs(target - _textureIntensity) >= TextureMinStep &&
                        elapsed >= TextureMinIntervalMs;
-
-        bool retry = !_haptic.LastWriteOk && elapsed >= TextureRetryMs;
+        bool retry   = !_haptic.LastWriteOk && elapsed >= TextureRetryMs;
 
         if (!_texturePlaying || changed || retry || elapsed >= keepAlive)
         {
-            _haptic.BuzzTexture(_settings.Texture, target);
+            _previewTimer.Stop();
+            _haptic.BuzzTexture(profile.Texture, target);
             _texturePlaying   = true;
             _textureIntensity = target;
             _textureSentAt    = now;
@@ -212,158 +316,120 @@ public class TrayApp : ApplicationContext
         _haptic.Buzz(Waveform.Stop);
     }
 
-    private void ToggleEnabled()
-    {
-        _enabled = !_enabled;
-        RebuildMenu();
-    }
-
-    private void ShowWindow()
-    {
-        if (_window == null || _window.IsDisposed)
-        {
-            _window = new SettingsForm(_settings, BuildIcon(connected: true),
-                () => _haptic.IsConnected, IsStartupEnabled,
-                on => { if (on != IsStartupEnabled()) ToggleStartup(); },
-                () => { StopTexture(); _settings.Save(); RebuildMenu(); });
-        }
-        _window.Show();
-        _window.Activate();
-    }
+    // ── Tray menu ──────────────────────────────────────────────────────────
 
     private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
-        PopulateMenu(menu);
+
+        var openItem = new ToolStripMenuItem("Open Slim Pen Haptics");
+        openItem.Font = new Font(openItem.Font, FontStyle.Bold);
+        openItem.Click += (_, _) => ShowWindow();
+        menu.Items.Add(openItem);
+
+        var enableItem = new ToolStripMenuItem("Haptics on") { Checked = Settings.Enabled };
+        enableItem.Click += (_, _) =>
+        {
+            Settings.Enabled = !Settings.Enabled;
+            SettingsChanged();
+            _window?.Reload();
+        };
+        menu.Items.Add(enableItem);
+
+        menu.Items.Add(new ToolStripSeparator());
+
+        var exitItem = new ToolStripMenuItem("Exit");
+        exitItem.Click += (_, _) => Exit();
+        menu.Items.Add(exitItem);
+
         return menu;
     }
 
     private void RebuildMenu()
     {
-        _tray.ContextMenuStrip?.Dispose();
+        var old = _tray.ContextMenuStrip;
         _tray.ContextMenuStrip = BuildMenu();
+        old?.Dispose();
     }
 
-    private void PopulateMenu(ContextMenuStrip menu)
-    {
-        var enableItem = new ToolStripMenuItem(_enabled ? "Enabled (click to disable)" : "Disabled (click to enable)");
-        enableItem.Font = new Font(enableItem.Font, FontStyle.Bold);
-        enableItem.Click += (_, _) => { ToggleEnabled(); };
-        menu.Items.Add(enableItem);
+    // ── Start with Windows ─────────────────────────────────────────────────
 
-        var windowItem = new ToolStripMenuItem("Open settings window");
-        windowItem.Click += (_, _) => ShowWindow();
-        menu.Items.Add(windowItem);
+    private static string StartupCommand => $"\"{Environment.ProcessPath}\" {BackgroundFlag}";
 
-        menu.Items.Add(new ToolStripSeparator());
-
-        // Intensity submenu
-        var intensityMenu = new ToolStripMenuItem("Intensity");
-        foreach (byte val in Settings.IntensityChoices)
-        {
-            string label = Settings.IntensityLabel(val);
-            byte captured = val;
-            var item = new ToolStripMenuItem(label) { Checked = _settings.Intensity == val };
-            item.Click += (_, _) => { _settings.Intensity = captured; _settings.Save(); RebuildMenu(); };
-            intensityMenu.DropDownItems.Add(item);
-        }
-        menu.Items.Add(intensityMenu);
-
-        var touchItem = new ToolStripMenuItem("Click on touch") { Checked = _settings.TouchClick };
-        touchItem.Click += (_, _) => { _settings.TouchClick = !_settings.TouchClick; _settings.Save(); RebuildMenu(); };
-        menu.Items.Add(touchItem);
-
-        // Drag texture submenu
-        var textureMenu = new ToolStripMenuItem("Drag texture");
-        foreach (var (label, wf) in Settings.TextureChoices)
-        {
-            Waveform captured = wf;
-            var item = new ToolStripMenuItem(label) { Checked = _settings.Texture == wf };
-            item.Click += (_, _) => { StopTexture(); _settings.Texture = captured; _settings.Save(); RebuildMenu(); };
-            textureMenu.DropDownItems.Add(item);
-        }
-        menu.Items.Add(textureMenu);
-
-        menu.Items.Add(new ToolStripSeparator());
-
-        bool startsUp = IsStartupEnabled();
-        var startupItem = new ToolStripMenuItem(startsUp ? "Run at startup (on)" : "Run at startup (off)");
-        startupItem.Click += (_, _) => { ToggleStartup(); RebuildMenu(); };
-        menu.Items.Add(startupItem);
-
-        menu.Items.Add(new ToolStripSeparator());
-
-        var exitItem = new ToolStripMenuItem("Exit");
-        exitItem.Click += (_, _) => ExitApp();
-        menu.Items.Add(exitItem);
-    }
-
-    private bool IsStartupEnabled()
+    public bool IsStartupEnabled()
     {
         using var key = Registry.CurrentUser.OpenSubKey(StartupKey, false);
         return key?.GetValue(StartupName) != null;
     }
 
-    private void ToggleStartup()
+    public void SetStartupEnabled(bool enabled)
     {
         using var key = Registry.CurrentUser.OpenSubKey(StartupKey, true);
         if (key == null) return;
-        if (IsStartupEnabled())
-            key.DeleteValue(StartupName, false);
-        else
-            key.SetValue(StartupName, $"\"{Application.ExecutablePath}\"");
+        if (enabled) key.SetValue(StartupName, StartupCommand);
+        else         key.DeleteValue(StartupName, false);
     }
 
-    // 16x16 tray icon: pen at 45°, cap upper-left, tip lower-right.
-    // Grey when pen not found, green when connected.
-    private static Icon BuildIcon(bool connected)
+    // Keep an existing entry pointing at this copy of the app, started quietly. Covers people
+    // moving from the loose v1 exe to the installed app, and the exe being moved.
+    private void RepairStartupEntry()
     {
-        var bmp = new Bitmap(16, 16);
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(StartupKey, true);
+            if (key?.GetValue(StartupName) is string current && current != StartupCommand)
+                key.SetValue(StartupName, StartupCommand);
+        }
+        catch (Exception)
+        {
+            // Startup is a convenience; never fail to launch over it.
+        }
+    }
+
+    // ── Tray icon ──────────────────────────────────────────────────────────
+
+    // Pen at 45°: green when haptics are live, grey when the pen is away or haptics are off.
+    private static Icon BuildIcon(bool active)
+    {
+        int size = SystemInformation.SmallIconSize.Width;
+        var bmp = new Bitmap(size, size);
         using (var g = Graphics.FromImage(bmp))
         {
             g.Clear(Color.Transparent);
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            var bodyColor = connected ? Color.FromArgb(0, 200, 83)  : Color.FromArgb(140, 140, 140);
-            var capColor  = connected ? Color.FromArgb(0, 130, 55)  : Color.FromArgb(85,  85,  85);
-            var tipColor  = connected ? Color.FromArgb(190, 255, 190) : Color.FromArgb(205, 205, 205);
+            var bodyColor = active ? Color.FromArgb(0, 200, 83)    : Color.FromArgb(140, 140, 140);
+            var capColor  = active ? Color.FromArgb(0, 130, 55)    : Color.FromArgb(85,  85,  85);
+            var tipColor  = active ? Color.FromArgb(190, 255, 190) : Color.FromArgb(205, 205, 205);
 
-            // Work in local space (vertical pen centered at origin),
-            // then rotate 45° CW so cap goes upper-left, tip lower-right.
-            g.TranslateTransform(8f, 8f);
+            // Drawn on a 16-unit grid (vertical pen centred at the origin), then rotated.
+            g.TranslateTransform(size / 2f, size / 2f);
             g.RotateTransform(45f);
+            g.ScaleTransform(size / 16f, size / 16f);
 
-            // Cap / eraser end
             using (var b = new SolidBrush(capColor))
                 g.FillRectangle(b, -1.5f, -6.5f, 3f, 2f);
 
-            // Pen body
             using (var b = new SolidBrush(bodyColor))
                 g.FillRectangle(b, -1.5f, -4.5f, 3f, 8f);
 
-            // Nib / tip triangle
             var tip = new PointF[] { new(-1.5f, 3.5f), new(1.5f, 3.5f), new(0f, 6.5f) };
             using (var b = new SolidBrush(tipColor))
                 g.FillPolygon(b, tip);
-
-            g.ResetTransform();
         }
         return Icon.FromHandle(bmp.GetHicon());
     }
 
-    private void ExitApp()
+    public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         _reconnectTimer.Stop();
-        _monitor?.Dispose();
+        _previewTimer.Stop();
+        _window?.Close();
+        _monitor.Dispose();
         _haptic.Dispose();
         _tray.Visible = false;
         _tray.Dispose();
-        Application.Exit();
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing) ExitApp();
-        base.Dispose(disposing);
     }
 }

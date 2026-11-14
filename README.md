@@ -6,21 +6,29 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 
 ## What you get
 
-- **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush.
+- **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Feel it** to try one without drawing.
+- **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack). The app switches automatically based on where you're drawing.
 - **Click on touch (optional):** a click when the tip touches down and lifts. Off by default.
-- **Intensity:** five steps from 20% to 100%, 80% by default.
-- **Remembers your settings** between restarts.
-- **One file, no installer.** Runs in the system tray and can start with Windows.
+- **Intensity:** 10% to 100%, 80% by default.
+- **Automatic updates** when installed, and it remembers your settings.
+- A settings window in the Windows 11 style, with light and dark mode.
 
 ## Download and run
 
-1. Download `SlimPenHaptics.exe` from [Releases](../../releases/latest).
-2. Run it. The first time, a small window opens to confirm it's running, show whether the pen was found, and let you pick your settings.
-3. After that it lives in the system tray: a green pen icon means the pen was found, grey means it wasn't. Right-click the icon for settings, or double-click it to reopen the window.
+Get the latest files from [Releases](../../releases/latest).
 
-**Windows will warn you the first time.** The exe isn't code-signed, so SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**. The full source is in this repo if you'd rather build it yourself.
+| File | For |
+| --- | --- |
+| `SlimPenHaptics-win-x64-Setup.exe` | **Recommended.** Installer for Intel and AMD Surfaces. Adds a Start menu entry and updates itself. |
+| `SlimPenHaptics-win-arm64-Setup.exe` | Installer for Snapdragon (ARM) Surfaces. **Untested**: please [report](../../issues) how it goes. The x64 installer also runs on ARM through Windows' emulation. |
+| `SlimPenHaptics-win-x64-Portable.zip`, `SlimPenHaptics-win-arm64-Portable.zip` | No install: unzip and run. Doesn't update itself. |
 
-The download is about 113 MB because it bundles the .NET runtime, so there is nothing else to install.
+1. Run the installer. The settings window opens to confirm it's running and show whether the pen was found.
+2. After that it lives in the system tray: a green pen icon means haptics are live, grey means the pen is asleep, docked or out of range. Click the icon, or open **Slim Pen Haptics** from the Start menu, to change settings.
+
+**Windows will warn you the first time.** The files aren't code-signed, so SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**. The full source is in this repo if you'd rather build it yourself.
+
+**Coming from v1.x?** Install v2, then delete the old `SlimPenHaptics.exe`. Your settings carry over, and "Start with Windows" is repointed to the installed copy automatically.
 
 ## Requirements
 
@@ -40,16 +48,24 @@ If it works (or doesn't) on your device, please [open an issue](../../issues) so
 - Finds the pen's haptic HID collection (VID `0x045E`, PID `0x0C0F`, digitizer page) and reads its waveform table from feature report `0x42`
 - Registers for system-wide digitizer input via Raw Input (`RIDEV_INPUTSINK`) to track tip contact, position and pressure in every app
 - Sends haptic commands to the pen as `0x41` output reports, from a background thread so Bluetooth writes never delay input
+- On each pen-down, looks up the app under the pen and applies its profile
+- Installer and updates are built with [Velopack](https://velopack.io), which updates from this repo's GitHub releases
 
 Inspired by [zeroxoneafour/slimpend](https://github.com/zeroxoneafour/slimpend), which does the same on Linux.
 
 ## Build from source
 
 ```
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet build -c Release -r win-x64
 ```
 
-Run `SlimPenHaptics.exe --buzz` to fire a single test click; exit code 0 means the pen accepted it.
+To build the installers, portable zips and update files for both architectures (needs `dotnet tool install -g vpk` once):
+
+```
+.\scriptselease.ps1 -Version 2.0.0
+```
+
+Run `SlimPenHaptics.exe --buzz` to fire a single test click; exit code 0 means the pen accepted it. A small log of connection changes is kept at `%AppData%\SlimPenHaptics\log.txt`.
 
 ## License
 
