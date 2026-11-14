@@ -14,6 +14,21 @@ public class Settings
     public Waveform Texture    { get; set; } = Waveform.PencilCont;    // Waveform.None = off
     public bool     TouchClick { get; set; }
 
+    public bool StartupNotification { get; set; } = true;
+    public bool WelcomeShown        { get; set; }   // the first-launch window has been seen
+
+    // Choices offered in the tray menu and the settings window.
+    public static readonly byte[] IntensityChoices = { 20, 40, 60, 80, 100 };
+
+    public static readonly (string Label, Waveform Waveform)[] TextureChoices =
+    {
+        ("Off", Waveform.None), ("Ink", Waveform.InkCont), ("Pencil", Waveform.PencilCont),
+        ("Marker", Waveform.MarkerCont), ("Brush", Waveform.BrushCont),
+    };
+
+    public static string IntensityLabel(byte value) =>
+        value == DefaultIntensity ? $"{value}% (Default)" : $"{value}%";
+
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "SlimPenHaptics", "settings.json");

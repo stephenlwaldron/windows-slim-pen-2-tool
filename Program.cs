@@ -18,6 +18,7 @@ static class Program
             return haptic.IsConnected ? 0 : 2;
         }
 
+        Application.SetHighDpiMode(HighDpiMode.SystemAware);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new TrayApp());

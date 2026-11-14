@@ -15,8 +15,8 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 ## Download and run
 
 1. Download `SlimPenHaptics.exe` from [Releases](../../releases/latest).
-2. Run it. A green pen icon in the tray means the pen was found; grey means it wasn't.
-3. Right-click the tray icon to change intensity, texture, click on touch, or run-at-startup.
+2. Run it. The first time, a small window opens to confirm it's running, show whether the pen was found, and let you pick your settings.
+3. After that it lives in the system tray: a green pen icon means the pen was found, grey means it wasn't. Right-click the icon for settings, or double-click it to reopen the window.
 
 **Windows will warn you the first time.** The exe isn't code-signed, so SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**. The full source is in this repo if you'd rather build it yourself.
 

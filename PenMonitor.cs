@@ -55,6 +55,9 @@ public class PenMonitor : NativeWindow, IDisposable
         [Out] ushort[] usageList, ref uint usageLength,
         IntPtr preparsedData, IntPtr report, uint reportLength);
 
+    [DllImport("user32.dll")]
+    private static extern uint GetDpiForSystem();
+
     [DllImport("hid.dll")]
     private static extern int HidP_GetUsageValue(
         int reportType, ushort usagePage, ushort linkCollection, ushort usage,
@@ -124,8 +127,11 @@ public class PenMonitor : NativeWindow, IDisposable
     public PenMonitor()
     {
         var screen = Screen.PrimaryScreen?.Bounds ?? new System.Drawing.Rectangle(0, 0, 1920, 1280);
-        _screenW = screen.Width;
-        _screenH = screen.Height;
+
+        // Work in 96-dpi units so drag speed feels the same at any display scaling.
+        double scale = Math.Max(GetDpiForSystem(), 96u) / 96.0;
+        _screenW = screen.Width  / scale;
+        _screenH = screen.Height / scale;
 
         // Create a message-only window (parent = HWND_MESSAGE = -3)
         CreateHandle(new CreateParams

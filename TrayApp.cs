@@ -14,6 +14,7 @@ public class TrayApp : ApplicationContext
     private PenMonitor?           _monitor;
     private bool                  _enabled = true;
     private readonly Settings     _settings = Settings.Load();
+    private SettingsForm?         _window;
 
     private System.Windows.Forms.Timer _reconnectTimer;
 
@@ -45,10 +46,26 @@ public class TrayApp : ApplicationContext
         };
 
         _tray.ContextMenuStrip = BuildMenu();
-        _tray.DoubleClick += (_, _) => ToggleEnabled();
+        _tray.DoubleClick += (_, _) => ShowWindow();
 
         // Try connecting to the pen on startup
         TryConnect();
+
+        // A tray app starts invisibly, so say so: a window the first time, a notification after.
+        if (!_settings.WelcomeShown)
+        {
+            _settings.WelcomeShown = true;
+            _settings.Save();
+            ShowWindow();
+        }
+        else if (_settings.StartupNotification)
+        {
+            _tray.ShowBalloonTip(4000, "Slim Pen Haptics is running",
+                _haptic.IsConnected
+                    ? "Pen connected. Right-click the pen icon in the tray for settings."
+                    : "Pen not found yet. It will connect when the pen wakes up.",
+                ToolTipIcon.Info);
+        }
 
         // Reconnect timer — pen may pair after app starts
         _reconnectTimer = new System.Windows.Forms.Timer { Interval = 5000 };
@@ -146,6 +163,19 @@ public class TrayApp : ApplicationContext
         RebuildMenu();
     }
 
+    private void ShowWindow()
+    {
+        if (_window == null || _window.IsDisposed)
+        {
+            _window = new SettingsForm(_settings, BuildIcon(connected: true),
+                () => _haptic.IsConnected, IsStartupEnabled,
+                on => { if (on != IsStartupEnabled()) ToggleStartup(); },
+                () => { StopTexture(); _settings.Save(); RebuildMenu(); });
+        }
+        _window.Show();
+        _window.Activate();
+    }
+
     private ContextMenuStrip BuildMenu()
     {
         var menu = new ContextMenuStrip();
@@ -166,13 +196,17 @@ public class TrayApp : ApplicationContext
         enableItem.Click += (_, _) => { ToggleEnabled(); };
         menu.Items.Add(enableItem);
 
+        var windowItem = new ToolStripMenuItem("Open settings window");
+        windowItem.Click += (_, _) => ShowWindow();
+        menu.Items.Add(windowItem);
+
         menu.Items.Add(new ToolStripSeparator());
 
         // Intensity submenu
         var intensityMenu = new ToolStripMenuItem("Intensity");
-        foreach (byte val in new byte[] { 20, 40, 60, 80, 100 })
+        foreach (byte val in Settings.IntensityChoices)
         {
-            string label = val == Settings.DefaultIntensity ? $"{val}% (Default)" : $"{val}%";
+            string label = Settings.IntensityLabel(val);
             byte captured = val;
             var item = new ToolStripMenuItem(label) { Checked = _settings.Intensity == val };
             item.Click += (_, _) => { _settings.Intensity = captured; _settings.Save(); RebuildMenu(); };
@@ -186,11 +220,7 @@ public class TrayApp : ApplicationContext
 
         // Drag texture submenu
         var textureMenu = new ToolStripMenuItem("Drag texture");
-        foreach (var (label, wf) in new[]
-                 {
-                     ("Off", Waveform.None), ("Ink", Waveform.InkCont), ("Pencil", Waveform.PencilCont),
-                     ("Marker", Waveform.MarkerCont), ("Brush", Waveform.BrushCont),
-                 })
+        foreach (var (label, wf) in Settings.TextureChoices)
         {
             Waveform captured = wf;
             var item = new ToolStripMenuItem(label) { Checked = _settings.Texture == wf };
