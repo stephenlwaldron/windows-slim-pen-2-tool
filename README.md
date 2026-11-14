@@ -70,7 +70,7 @@ dotnet build -c Release -r win-x64
 To build the installers, portable zips and update files for both architectures (needs `dotnet tool install -g vpk` once):
 
 ```
-.\scriptselease.ps1 -Version 2.0.0
+.\scripts\release.ps1 -Version 2.0.0
 ```
 
 Run `SlimPenHaptics.exe --buzz` to fire a single test click; exit code 0 means the pen accepted it. A small log of connection changes is kept at `%AppData%\SlimPenHaptics\log.txt`.
