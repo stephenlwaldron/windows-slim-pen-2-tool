@@ -1,8 +1,8 @@
 # windows-slim-pen-haptics-unlocked
 
-**Surface Slim Pen 2 haptics only work in a handful of apps. This makes them work everywhere on Windows.**
+**Surface Slim Pen 2 haptics only work in a handful of apps. This makes them work everywhere on Windows, and makes the eraser end work in apps that ignore it.**
 
-The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else.
+The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else. Each app can have its own feel, and flipping the pen can switch an app to its eraser tool.
 
 <p align="center">
   <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, an Advanced button, and click on touch enabled with its own intensity slider. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
