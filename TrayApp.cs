@@ -15,6 +15,7 @@ public sealed class TrayApp : IDisposable
     private readonly NotifyIcon   _tray;
     private readonly HapticEngine _haptic = new();
     private readonly PenMonitor   _monitor;
+    private readonly TopButton    _topButton = new();
     private Ui.MainWindow?        _window;
 
     private readonly System.Windows.Forms.Timer _reconnectTimer;
@@ -29,6 +30,10 @@ public sealed class TrayApp : IDisposable
     private string?  _activeExe;
     private string?  _eraserSentTo;     // app whose eraser shortcut was pressed on the last flip
     private bool     _eraserEndLogged;
+    private bool     _sideButtonLogged;
+
+    // Where each app's side-button loop has got to: 0 (or absent) = the pen tip tool.
+    private readonly Dictionary<string, int> _toolAt = new(StringComparer.OrdinalIgnoreCase);
     private Profile? _profile;
     private readonly List<string> _recentApps = new();
     private static readonly string OwnExe = Path.GetFileName(Environment.ProcessPath ?? "SlimPenHaptics.exe");
@@ -83,17 +88,37 @@ public sealed class TrayApp : IDisposable
         _monitor.PenUp   += OnPenUp;
         _monitor.PenMove += OnPenMove;
         _monitor.EraserEnd += OnEraserEnd;
+        _monitor.SideButton += OnSideButton;
+
+        _topButton.Pressed = OnTopButton;
+        _topButton.Enabled = Settings.Apps.Exists(a => a.UsesTopButton);
 
         TryConnect();
         Log.Write($"started v{Updater.Version}" + (_haptic.IsConnected ? "" : "; pen not reachable yet (asleep or not paired)"));
 
         RepairStartupEntry();
 
+        // First run of a new version: say what changed, once. Someone installing for the first
+        // time has the welcome banner instead.
+        var news = new List<Changelog.Release>();
+        if (Settings.LastVersion != Updater.Version)
+        {
+            if (Settings.WelcomeShown) news = Changelog.Since(Settings.LastVersion, Updater.Version);
+            Settings.LastVersion = Updater.Version;
+            Settings.Save();
+            if (news.Count > 0) Log.Write($"updated to v{Updater.Version}; showing what's new");
+        }
+
         // A tray app starts invisibly, so say so: the window when the user launched it,
         // a notification when Windows did.
         if (!background || !Settings.WelcomeShown)
         {
             ShowWindow();
+            ShowWhatsNew(news, fromSettings: true);
+        }
+        else if (news.Count > 0)
+        {
+            ShowWhatsNew(news, fromSettings: false);
         }
         else if (Settings.StartupNotification)
         {
@@ -134,6 +159,8 @@ public sealed class TrayApp : IDisposable
     {
         StopTexture();
         Settings.Save();
+        _toolAt.Clear();    // the loops may have changed shape; start them again from the pen tip
+        _topButton.Enabled = Settings.Apps.Exists(a => a.UsesTopButton);
         _profile = Settings.ProfileFor(_activeExe);
         RebuildMenu();
         UpdateIcon();
@@ -165,6 +192,21 @@ public sealed class TrayApp : IDisposable
         if (_window.WindowState == System.Windows.WindowState.Minimized)
             _window.WindowState = System.Windows.WindowState.Normal;
         _window.Activate();
+    }
+
+    // fromSettings: the settings window is already open, so the popup sits over it and
+    // doesn't need its own button to get there.
+    public void ShowWhatsNew(IReadOnlyList<Changelog.Release> releases, bool fromSettings)
+    {
+        if (releases.Count == 0) return;
+        var popup = new Ui.WhatsNewWindow(releases, fromSettings ? null : ShowWindow);
+        if (fromSettings && _window != null)
+        {
+            popup.Owner = _window;
+            popup.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
+        }
+        popup.Show();
+        popup.Activate();
     }
 
     public void Exit()
@@ -270,11 +312,66 @@ public sealed class TrayApp : IDisposable
             // Only switch back where this app switched to the eraser in the first place.
             string? sentTo = _eraserSentTo;
             _eraserSentTo = null;
-            if (app == null || !app.EraserEnabled || sentTo == null || string.IsNullOrEmpty(app.DrawShortcut)) return;
+            if (app == null || !app.EraserEnabled || sentTo == null) return;
             if (!string.Equals(sentTo, app.Exe, StringComparison.OrdinalIgnoreCase) || !IsForeground(exe)) return;
-            KeySender.Send(app.DrawShortcut);
-            Log.Write($"tip over {exe}: sent {KeySender.Display(app.DrawShortcut)}");
+
+            // Back to whatever the tip was on: the pen tip tool, or the tool the side button last chose.
+            string tool = CurrentTool(app);
+            if (string.IsNullOrEmpty(tool)) return;
+            KeySender.Send(tool);
+            Log.Write($"tip over {exe}: sent {KeySender.Display(tool)}");
         }
+    }
+
+    // The shortcut of the tool the tip is on in this app, as far as the side button knows.
+    private string CurrentTool(AppEntry app)
+    {
+        if (!app.ButtonEnabled || !_toolAt.TryGetValue(app.Exe, out int at)) return app.PenTipShortcut;
+        var loop = app.ToolLoop();
+        return at < loop.Count ? loop[at] : app.PenTipShortcut;
+    }
+
+    // Each click of the side button moves the app on to the next tool in its loop, and after
+    // the last one back to the pen tip tool. Same rule as the eraser: only when the app under
+    // the pen is the one with keyboard focus.
+    private void OnSideButton()
+    {
+        if (!_sideButtonLogged)
+        {
+            // Once per run, so a bug report shows whether this pen reports its side button at all.
+            _sideButtonLogged = true;
+            Log.Write("pen side button detected");
+        }
+
+        string? under = AppResolver.ExeUnderPen();
+        string? exe   = under == null ? null : Path.GetFileName(under);
+        var app = Settings.FindApp(exe);
+        if (app == null || !app.ButtonEnabled) return;
+
+        var loop = app.ToolLoop();
+        if (loop.Count < 2 || !IsForeground(exe)) return;
+
+        _toolAt.TryGetValue(app.Exe, out int at);
+        at = (at + 1) % loop.Count;
+        if (loop[at].Length == 0) at = 1;   // no pen tip tool set: go round the tools only
+
+        _toolAt[app.Exe] = at;
+        KeySender.Send(loop[at]);
+        Log.Write($"side button over {exe}: sent {KeySender.Display(loop[at])} ({(at == 0 ? "pen tip" : $"tool {at} of {loop.Count - 1}")})");
+    }
+
+    // The top button reaches the PC over Bluetooth, so the pen may be nowhere near the screen:
+    // go by the app with keyboard focus. Returning false leaves the press to Windows.
+    private bool OnTopButton(TopGesture gesture)
+    {
+        string? focused = AppResolver.ForegroundExe();
+        var app = Settings.FindApp(focused == null ? null : Path.GetFileName(focused));
+        if (app == null || !app.TopEnabled) return false;
+
+        string shortcut = app.TopShortcut(gesture);
+        if (!KeySender.Send(shortcut)) return false;
+        Log.Write($"top button {gesture} in {app.Exe}: sent {KeySender.Display(shortcut)}");
+        return true;
     }
 
     private static bool IsForeground(string? exe)
@@ -483,6 +580,7 @@ public sealed class TrayApp : IDisposable
         _previewTimer.Stop();
         _window?.Close();
         _monitor.Dispose();
+        _topButton.Dispose();
         _haptic.Dispose();
         _tray.Visible = false;
         _tray.Dispose();

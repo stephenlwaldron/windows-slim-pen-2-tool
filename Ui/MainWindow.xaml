@@ -150,33 +150,81 @@
                     </Border>
 
                     <!-- Not haptics, so it stays usable when haptics are off in the app -->
-                    <Border x:Name="EraserCard" Style="{StaticResource Card}">
-                        <StackPanel>
+                    <StackPanel x:Name="ToolCards">
+                        <Border Style="{StaticResource Card}">
+                            <DockPanel>
+                                <TextBox x:Name="PenTipShortcutBox" DockPanel.Dock="Right" Width="150" Margin="16,0,0,0"
+                                         VerticalAlignment="Center" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown"
+                                         ToolTip="Click, then press the shortcut of the tool you draw with. Backspace clears it." />
+                                <StackPanel>
+                                    <TextBlock Text="Pen tip tool" Style="{StaticResource CardTitle}" />
+                                    <TextBlock Style="{StaticResource CardHint}"
+                                               Text="The app's shortcut for the tool you normally draw with. The eraser and the side button below come back to it." />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
                             <DockPanel>
                                 <CheckBox x:Name="EraserEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Margin="16,0,0,0" Click="EraserEnabledBox_Click" />
+                                <TextBox x:Name="EraserShortcutBox" DockPanel.Dock="Right" Width="150" Margin="16,0,0,0"
+                                         VerticalAlignment="Center" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown"
+                                         ToolTip="Click, then press the app's eraser shortcut. Backspace clears it." />
                                 <StackPanel x:Name="EraserText">
                                     <TextBlock Text="Eraser shortcut" Style="{StaticResource CardTitle}" />
                                     <TextBlock Style="{StaticResource CardHint}"
-                                               Text="Optional, for apps that ignore the pen's eraser end. Flip the pen and this presses the app's eraser shortcut for you; flip back and it presses the drawing one." />
+                                               Text="Optional, for apps that ignore the pen's eraser end. Flip the pen and this presses the app's eraser shortcut for you; flip back and it returns to the tool you were on." />
                                 </StackPanel>
                             </DockPanel>
-                            <Grid x:Name="EraserBoxes" Margin="0,12,0,0" ToolTip="Click a box and press the keys. Backspace clears it.">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Eraser tool" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                <TextBox x:Name="EraserShortcutBox" Grid.Column="1" IsReadOnly="True" Tag="Eraser"
-                                         PreviewKeyDown="ShortcutBox_PreviewKeyDown" ToolTip="Click, then press the app's eraser shortcut" />
-                                <TextBlock Grid.Column="2" Text="Back to drawing" VerticalAlignment="Center" Margin="24,0,12,0" />
-                                <TextBox x:Name="DrawShortcutBox" Grid.Column="3" IsReadOnly="True" Tag="Draw"
-                                         PreviewKeyDown="ShortcutBox_PreviewKeyDown" ToolTip="Click, then press the shortcut for the tool to return to" />
-                            </Grid>
-                        </StackPanel>
-                    </Border>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <CheckBox x:Name="ButtonEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                              Margin="16,0,0,0" Click="ButtonEnabledBox_Click" />
+                                    <StackPanel x:Name="ButtonText">
+                                        <TextBlock Text="Side button tools" Style="{StaticResource CardTitle}" />
+                                        <TextBlock Style="{StaticResource CardHint}"
+                                                   Text="Optional. Click the pen's side button while it hovers over the app to switch to the next tool here. After the last one, another click goes back to the pen tip tool." />
+                                    </StackPanel>
+                                </DockPanel>
+                                <!-- Filled in by RebuildButtonChain: pen tip, then a box per tool, then + -->
+                                <WrapPanel x:Name="ButtonChain" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <CheckBox x:Name="TopEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                              Margin="16,0,0,0" Click="TopEnabledBox_Click" />
+                                    <StackPanel x:Name="TopText">
+                                        <TextBlock Text="Top button" Style="{StaticResource CardTitle}" />
+                                        <TextBlock Style="{StaticResource CardHint}"
+                                                   Text="Optional. The button on the end of the pen works from anywhere, even away from the screen. While this app is in front, each one you set presses a shortcut instead of what Windows normally does; the ones left unset stay with Windows." />
+                                    </StackPanel>
+                                </DockPanel>
+                                <Grid x:Name="TopBoxes" Margin="0,12,0,0" ToolTip="Click a box and press the keys. Backspace clears it.">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Click" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox x:Name="TopClickBox" Grid.Column="1" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown" />
+                                    <TextBlock Grid.Column="2" Text="Double-click" VerticalAlignment="Center" Margin="18,0,10,0" />
+                                    <TextBox x:Name="TopDoubleClickBox" Grid.Column="3" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown" />
+                                    <TextBlock Grid.Column="4" Text="Hold" VerticalAlignment="Center" Margin="18,0,10,0" />
+                                    <TextBox x:Name="TopHoldBox" Grid.Column="5" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
                     <StackPanel x:Name="ProfileCards">
                         <Border Style="{StaticResource Card}">
@@ -345,6 +393,8 @@
                             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Button x:Name="RestartUpdateButton" Content="Restart to update" Padding="14,6" Margin="0,0,8,0"
                                         Visibility="Collapsed" Click="RestartUpdateButton_Click" />
+                                <Button x:Name="WhatsNewButton" Content="What's new" Padding="14,6" Margin="0,0,8,0"
+                                        Click="WhatsNewButton_Click" />
                                 <Button x:Name="CheckUpdateButton" Content="Check for updates" Padding="14,6"
                                         Click="CheckUpdateButton_Click" />
                             </StackPanel>

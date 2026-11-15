@@ -113,6 +113,11 @@ public static class KeySender
 
         System.Threading.Tasks.Task.Run(() =>
         {
+            // The pen's top button holds the Windows key for a moment; a shortcut sent while it
+            // is still down would arrive as Win+something.
+            for (int waited = 0; waited < WinReleaseMs && (IsDown(VK_LWIN) || IsDown(VK_RWIN)); waited += 10)
+                System.Threading.Thread.Sleep(10);
+
             foreach (ushort vk in down)
             {
                 SendOne(Make(vk, up: false));
@@ -125,6 +130,23 @@ public static class KeySender
             }
         });
         return true;
+    }
+
+    private const int    WinReleaseMs = 500;
+    private const ushort VK_LWIN = 0x5B, VK_RWIN = 0x5C;
+    private const ushort VK_MASK = 0xE8;    // unassigned: no app or Windows feature reacts to it
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vk);
+
+    private static bool IsDown(ushort vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
+
+    // Press a key that does nothing. While the Windows key is held, this stops its release
+    // from opening the Start menu.
+    public static void TapMaskKey()
+    {
+        SendOne(Make(VK_MASK, up: false));
+        SendOne(Make(VK_MASK, up: true));
     }
 
     private static void SendOne(INPUT input) => SendInput(1, new[] { input }, Marshal.SizeOf<INPUT>());

@@ -18,6 +18,9 @@ public class PenMonitor : NativeWindow, IDisposable
     // Fired when the pen is flipped: true = eraser end towards the screen, false = tip again.
     public event Action<bool>? EraserEnd;
 
+    // Fired each time the side button is pressed, hovering or drawing.
+    public event Action? SideButton;
+
     // Fired for each report while the tip is down:
     // speed (screen px/s, smoothed), pressure (0..1), travel since pen-down (px).
     public event Action<double, double, double>? PenMove;
@@ -25,6 +28,11 @@ public class PenMonitor : NativeWindow, IDisposable
     private bool _tipDown;
     private bool _eraserEnd;
     private bool _disposed;
+
+    private bool   _buttonDown;
+    private double _buttonSeenAt;
+
+    private const double ButtonMaxGapSeconds  = 0.25;   // reports stopped: the pen left the screen mid-press
 
     // Per-device parse data, built on the first report from that device.
     private sealed class PenDevice
@@ -122,6 +130,8 @@ public class PenMonitor : NativeWindow, IDisposable
     private const ushort HID_USAGE_TIP_SWITCH      = 0x0042;
     private const ushort HID_USAGE_INVERT          = 0x003C;    // eraser end near the screen
     private const ushort HID_USAGE_ERASER          = 0x0045;    // eraser end touching
+    private const ushort HID_USAGE_BARREL          = 0x0044;    // side button
+    private const ushort HID_USAGE_BARREL_2        = 0x005A;    // second side button, on pens that have one
     private const ushort HID_USAGE_TIP_PRESSURE    = 0x0030;
     private const ushort HID_USAGE_PAGE_GENERIC    = 0x0001;
     private const ushort HID_USAGE_GENERIC_X       = 0x0030;
@@ -160,9 +170,10 @@ public class PenMonitor : NativeWindow, IDisposable
                 usUsage     = HID_USAGE_DIGITIZER_PEN,
                 dwFlags     = RIDEV_INPUTSINK,
                 hwndTarget  = Handle,
-            }
+            },
         };
-        RegisterRawInputDevices(rid, 1, (uint)Marshal.SizeOf<RAWINPUTDEVICE>());
+        if (!RegisterRawInputDevices(rid, (uint)rid.Length, (uint)Marshal.SizeOf<RAWINPUTDEVICE>()))
+            Log.Write($"raw input registration failed (error {Marshal.GetLastWin32Error()})");
     }
 
     protected override void WndProc(ref Message m)
@@ -208,12 +219,15 @@ public class PenMonitor : NativeWindow, IDisposable
                                         usages, ref usageCount,
                                         dev.Ppd, reportPtr, ri.hid.dwSizeHid);
 
-            bool tipNow = false, eraserNow = false;
+            bool tipNow = false, eraserNow = false, buttonNow = false;
             for (uint j = 0; j < usageCount; j++)
             {
                 if (usages[j] == HID_USAGE_TIP_SWITCH) tipNow = true;
                 if (usages[j] == HID_USAGE_INVERT || usages[j] == HID_USAGE_ERASER) eraserNow = true;
+                if (usages[j] == HID_USAGE_BARREL || usages[j] == HID_USAGE_BARREL_2) buttonNow = true;
             }
+
+            TrackButton(buttonNow, eraserNow);
 
             if (eraserNow != _eraserEnd)
             {
@@ -235,6 +249,20 @@ public class PenMonitor : NativeWindow, IDisposable
             if (tipNow) TrackMotion(dev, reportPtr, ri.hid.dwSizeHid);
             if (!tipNow && _tipDown)  { _tipDown = false; PenUp?.Invoke(); }
         }
+    }
+
+    // Fires once per press, the moment the button goes down, whether the pen is hovering or
+    // drawing. Not from the eraser end: some pens report their eraser button as side button + invert.
+    private void TrackButton(bool buttonNow, bool eraser)
+    {
+        double now = _clock.Elapsed.TotalSeconds;
+
+        // Reports stopped while it was held (the pen left the screen), so the release was never seen.
+        if (_buttonDown && now - _buttonSeenAt > ButtonMaxGapSeconds) _buttonDown = false;
+        _buttonSeenAt = now;
+
+        if (buttonNow && !_buttonDown && !eraser) SideButton?.Invoke();
+        _buttonDown = buttonNow;
     }
 
     private void TrackMotion(PenDevice dev, IntPtr report, uint reportLength)

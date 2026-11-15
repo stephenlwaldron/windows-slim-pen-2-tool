@@ -49,6 +49,13 @@ public partial class MainWindow : Window
         InitializeComponent();
         _loading = false;
 
+        PenTipShortcutBox.Tag = (Action<string>)(shortcut => { if (_editingApp != null) _editingApp.PenTipShortcut = shortcut; });
+        EraserShortcutBox.Tag = (Action<string>)(shortcut => { if (_editingApp != null) _editingApp.EraserShortcut = shortcut; });
+
+        TopClickBox.Tag       = (Action<string>)(shortcut => { if (_editingApp != null) _editingApp.TopClick = shortcut; });
+        TopDoubleClickBox.Tag = (Action<string>)(shortcut => { if (_editingApp != null) _editingApp.TopDoubleClick = shortcut; });
+        TopHoldBox.Tag        = (Action<string>)(shortcut => { if (_editingApp != null) _editingApp.TopHold = shortcut; });
+
         NavList.ItemsSource = _nav;
         foreach (var (label, _) in Settings.TextureChoices) TextureBox.Items.Add(label);
 
@@ -178,11 +185,16 @@ public partial class MainWindow : Window
         var isApp = item.App != null ? Visibility.Visible : Visibility.Collapsed;
         RemoveButton.Visibility   = isApp;
         AppEnabledCard.Visibility = isApp;
-        EraserCard.Visibility     = isApp;
+        ToolCards.Visibility      = isApp;
         EraserEnabledBox.IsChecked = item.App?.EraserEnabled ?? false;
-        RefreshEraserBoxes();
+        ButtonEnabledBox.IsChecked = item.App?.ButtonEnabled ?? false;
+        PenTipShortcutBox.Text    = ShortcutText(item.App?.PenTipShortcut);
         EraserShortcutBox.Text    = ShortcutText(item.App?.EraserShortcut);
-        DrawShortcutBox.Text      = ShortcutText(item.App?.DrawShortcut);
+        TopEnabledBox.IsChecked   = item.App?.TopEnabled ?? false;
+        TopClickBox.Text          = ShortcutText(item.App?.TopClick);
+        TopDoubleClickBox.Text    = ShortcutText(item.App?.TopDoubleClick);
+        TopHoldBox.Text           = ShortcutText(item.App?.TopHold);
+        RefreshToolCards();
         AppEnabledBox.IsChecked   = item.App?.Enabled ?? true;
         ProfileCards.IsEnabled    = item.App?.Enabled ?? true;
         ProfileCards.Opacity      = ProfileCards.IsEnabled ? 1.0 : 0.45;
@@ -272,23 +284,165 @@ public partial class MainWindow : Window
 
     private void ConfirmTextureButton_Click(object sender, RoutedEventArgs e) => _app.Preview(Editing);
 
-    // ── Eraser shortcut ────────────────────────────────────────────────────
+    // ── Tool shortcuts: pen tip, eraser, side button ───────────────────────
+
+    private const string NextGlyph   = "";    // chevron between the tools of the loop
+    private const string AddGlyph    = "";
+    private const string RemoveGlyph = "";
+
+    // Muted green for adding a tool and muted red for removing one: a mid-tone symbol on a
+    // faint wash of the same colour, so both read in light and dark mode.
+    private static readonly Brush AddInk     = Frozen(0xFF, 0x5F, 0xA0, 0x74);
+    private static readonly Brush AddTint    = Frozen(0x33, 0x5F, 0xA0, 0x74);
+    private static readonly Brush RemoveInk  = Frozen(0xFF, 0xB8, 0x6E, 0x6E);
+    private static readonly Brush RemoveTint = Frozen(0x33, 0xB8, 0x6E, 0x6E);
+
+    private static Brush Frozen(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     private void EraserEnabledBox_Click(object sender, RoutedEventArgs e)
     {
         if (_loading || _editingApp == null) return;
         _editingApp.EraserEnabled = EraserEnabledBox.IsChecked == true;
-        RefreshEraserBoxes();
+        RefreshToolCards();
         _app.SettingsChanged();
     }
 
-    // Switched off, the card is greyed out and its shortcut boxes are hidden; only the checkbox stays live.
-    private void RefreshEraserBoxes()
+    private void ButtonEnabledBox_Click(object sender, RoutedEventArgs e)
     {
-        bool on = EraserEnabledBox.IsChecked == true;
-        EraserBoxes.Visibility = on ? Visibility.Visible : Visibility.Collapsed;
-        EraserText.Opacity     = on ? 1.0 : 0.45;
+        if (_loading || _editingApp == null) return;
+        _editingApp.ButtonEnabled = ButtonEnabledBox.IsChecked == true;
+        RefreshToolCards();
+        _app.SettingsChanged();
     }
+
+    private void TopEnabledBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading || _editingApp == null) return;
+        _editingApp.TopEnabled = TopEnabledBox.IsChecked == true;
+        RefreshToolCards();
+        _app.SettingsChanged();
+    }
+
+    // Switched off, a card is greyed out and its shortcut boxes are hidden; only the checkbox stays live.
+    private void RefreshToolCards()
+    {
+        bool top = TopEnabledBox.IsChecked == true;
+        TopBoxes.Visibility = top ? Visibility.Visible : Visibility.Collapsed;
+        TopText.Opacity     = top ? 1.0 : 0.45;
+
+        bool eraser = EraserEnabledBox.IsChecked == true;
+        EraserShortcutBox.Visibility = eraser ? Visibility.Visible : Visibility.Collapsed;
+        EraserText.Opacity           = eraser ? 1.0 : 0.45;
+
+        bool button = ButtonEnabledBox.IsChecked == true;
+        ButtonChain.Visibility = button ? Visibility.Visible : Visibility.Collapsed;
+        ButtonText.Opacity     = button ? 1.0 : 0.45;
+        if (button) RebuildButtonChain();
+    }
+
+    // The side button's loop, drawn left to right: the pen tip tool, a box for each tool the
+    // button switches to, and a + to add another until the limit is reached.
+    private void RebuildButtonChain(int focus = -1)
+    {
+        ButtonChain.Children.Clear();
+        if (_editingApp == null) return;
+
+        var tools = _editingApp.ButtonTools;
+        if (tools.Count == 0) tools.Add("");    // always one box to start from
+
+        ButtonChain.Children.Add(new Border
+        {
+            Child = new TextBlock { Text = "Pen tip: " + ShortcutText(_editingApp.PenTipShortcut), Opacity = 0.8 },
+            Padding = new Thickness(10, 6, 10, 6),
+            Margin = new Thickness(0, 4, 0, 0),
+            CornerRadius = new CornerRadius(4),
+            BorderThickness = new Thickness(1),
+            BorderBrush = TryFindResource("CardStrokeColorDefaultBrush") as Brush,
+            VerticalAlignment = VerticalAlignment.Center,
+            ToolTip = "Where the loop starts and ends. Set it in the Pen tip tool card above.",
+        });
+
+        for (int i = 0; i < tools.Count; i++)
+        {
+            int index = i;
+
+            var box = new TextBox
+            {
+                Text = ShortcutText(tools[index]),
+                Width = 110,
+                IsReadOnly = true,
+                ToolTip = $"Tool {index + 1}: click, then press the app's shortcut for it. Backspace clears it.",
+                Tag = (Action<string>)(shortcut => tools[index] = shortcut),
+            };
+            box.PreviewKeyDown += ShortcutBox_PreviewKeyDown;
+            System.Windows.Automation.AutomationProperties.SetName(box, $"Side button tool {index + 1}");
+
+            var step = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            step.Children.Add(ChainGlyph(NextGlyph));
+            step.Children.Add(box);
+            if (tools.Count > 1)
+            {
+                var remove = new Button
+                {
+                    Content = new TextBlock { Text = RemoveGlyph, Style = (Style)FindResource("Glyph"), FontSize = 10, Foreground = RemoveInk },
+                    Background = RemoveTint,
+                    Padding = new Thickness(7),
+                    Margin = new Thickness(2, 0, 0, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    ToolTip = $"Remove tool {index + 1}",
+                };
+                System.Windows.Automation.AutomationProperties.SetName(remove, $"Remove side button tool {index + 1}");
+                remove.Click += (_, _) =>
+                {
+                    tools.RemoveAt(index);
+                    RebuildButtonChain();
+                    _app.SettingsChanged();
+                };
+                step.Children.Add(remove);
+            }
+            ButtonChain.Children.Add(step);
+
+            if (index == focus) Dispatcher.BeginInvoke(() => box.Focus(), DispatcherPriority.Input);
+        }
+
+        if (tools.Count < AppEntry.MaxButtonTools)
+        {
+            var add = new Button
+            {
+                Content = new TextBlock { Text = AddGlyph, Style = (Style)FindResource("Glyph"), FontSize = 12, Foreground = AddInk },
+                Background = AddTint,
+                Padding = new Thickness(9, 8, 9, 8),
+                VerticalAlignment = VerticalAlignment.Center,
+                ToolTip = "Add another tool to the loop",
+            };
+            System.Windows.Automation.AutomationProperties.SetName(add, "Add another tool");
+            add.Click += (_, _) =>
+            {
+                tools.Add("");
+                RebuildButtonChain(focus: tools.Count - 1);
+                _app.SettingsChanged();
+            };
+
+            var step = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            step.Children.Add(ChainGlyph(NextGlyph));
+            step.Children.Add(add);
+            ButtonChain.Children.Add(step);
+        }
+    }
+
+    private TextBlock ChainGlyph(string glyph) => new()
+    {
+        Text = glyph,
+        Style = (Style)FindResource("Glyph"),
+        FontSize = 11,
+        Opacity = 0.6,
+        Margin = new Thickness(8, 0, 8, 0),
+    };
 
     private static string ShortcutText(string? shortcut)
     {
@@ -296,10 +450,11 @@ public partial class MainWindow : Window
         return text.Length == 0 ? "Not set" : text;
     }
 
-    // The boxes record whatever shortcut is pressed while they have focus.
+    // The boxes record whatever shortcut is pressed while they have focus, and hand it to the
+    // setter kept in their Tag.
     private void ShortcutBox_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        if (_editingApp == null || sender is not TextBox box) return;
+        if (_editingApp == null || sender is not TextBox { Tag: Action<string> store } box) return;
 
         var key = e.Key == System.Windows.Input.Key.System ? e.SystemKey : e.Key;
         if (key == System.Windows.Input.Key.Tab) return;            // let Tab move on as usual
@@ -311,11 +466,12 @@ public partial class MainWindow : Window
                      key is System.Windows.Input.Key.Back or System.Windows.Input.Key.Delete or System.Windows.Input.Key.Escape;
         string shortcut = clear ? "" : KeySender.Format(modifiers, key);
 
-        if ((string)box.Tag == "Eraser") _editingApp.EraserShortcut = shortcut;
-        else                             _editingApp.DrawShortcut   = shortcut;
-
+        store(shortcut);
         box.Text = ShortcutText(shortcut);
         _app.SettingsChanged();
+
+        // The loop shows the pen tip tool as its first stop.
+        if (box == PenTipShortcutBox && ButtonEnabledBox.IsChecked == true) RebuildButtonChain();
     }
 
     // ── Response (advanced) ────────────────────────────────────────────────
@@ -454,6 +610,9 @@ public partial class MainWindow : Window
     }
 
     private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e) => await _app.Updater.CheckAsync();
+
+    private void WhatsNewButton_Click(object sender, RoutedEventArgs e) =>
+        _app.ShowWhatsNew(Changelog.Since(null, _app.Updater.Version), fromSettings: true);
 
     private void RestartUpdateButton_Click(object sender, RoutedEventArgs e) => _app.Updater.RestartToUpdate();
 

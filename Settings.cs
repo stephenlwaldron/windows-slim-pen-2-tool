@@ -53,12 +53,53 @@ public class AppEntry
     public string  Name    { get; set; } = "";
     public bool    Enabled { get; set; } = true;    // false = no haptics from this app in it
 
-    // Keyboard shortcuts pressed for the user when the pen is flipped over this app, in
-    // KeySender's stored form ("Shift+E"). Empty = do nothing.
+    // Keyboard shortcuts pressed for the user in this app, in KeySender's stored form
+    // ("Shift+E"). Empty = do nothing.
+
+    // The tool the user normally draws with. The eraser and the side button both return to it.
+    public string PenTipShortcut { get; set; } = "";
+
     public bool   EraserEnabled  { get; set; }          // off until the user opts in
     public string EraserShortcut { get; set; } = "";    // on flipping to the eraser end
-    public string DrawShortcut   { get; set; } = "";    // on flipping back to the tip
+
+    // The pen's side button steps through these tools, one per press, then loops back to the
+    // pen tip tool. Unset entries (a box added but not filled in yet) are skipped.
+    public bool         ButtonEnabled { get; set; }     // off until the user opts in
+    public List<string> ButtonTools   { get; set; } = new();
+
+    public const int MaxButtonTools = 10;
+
+    // The pen's top button, which works away from the screen too. While this app is in front,
+    // each gesture with a shortcut presses it instead of doing what Windows has assigned.
+    public bool   TopEnabled     { get; set; }          // off until the user opts in
+    public string TopClick       { get; set; } = "";
+    public string TopDoubleClick { get; set; } = "";
+    public string TopHold        { get; set; } = "";
+
+    public string TopShortcut(TopGesture gesture) => gesture switch
+    {
+        TopGesture.Click       => TopClick,
+        TopGesture.DoubleClick => TopDoubleClick,
+        _                      => TopHold,
+    };
+
+    [JsonIgnore] public bool UsesTopButton =>
+        TopEnabled && (TopClick.Length > 0 || TopDoubleClick.Length > 0 || TopHold.Length > 0);
+
+    // v2.2 called the pen tip tool "back to drawing"; read it once so nobody loses their setup.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? DrawShortcut { get; set; }
+
     public Profile Profile { get; set; } = new();
+
+    // Every stop of the side button's loop, in order: the pen tip tool first, then each tool
+    // that has a shortcut. The pen tip stop stays in the loop even when its shortcut is unset.
+    public List<string> ToolLoop()
+    {
+        var loop = new List<string> { PenTipShortcut };
+        foreach (string tool in ButtonTools)
+            if (!string.IsNullOrEmpty(tool)) loop.Add(tool);
+        return loop;
+    }
 }
 
 // User choices, kept in %AppData%\SlimPenHaptics\settings.json.
@@ -72,6 +113,9 @@ public class Settings
 
     public bool StartupNotification { get; set; } = true;
     public bool WelcomeShown        { get; set; }   // the first-launch banner has been seen
+
+    // The version that last ran here, so an update can say what's new. Empty before 2.3.
+    public string LastVersion { get; set; } = "";
 
     // v1.x kept one flat profile; read it once so nobody loses their setup.
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public byte?     Intensity  { get; set; }
@@ -118,6 +162,7 @@ public class Settings
 
             loaded.Default ??= new Profile();
             loaded.Apps    ??= new List<AppEntry>();
+            loaded.LastVersion ??= "";
 
             if (loaded.Intensity != null || loaded.Texture != null || loaded.TouchClick != null)
             {
@@ -133,6 +178,20 @@ public class Settings
             {
                 app.Profile ??= new Profile();
                 Validate(app.Profile);
+
+                app.PenTipShortcut ??= "";
+                app.EraserShortcut ??= "";
+                app.TopClick       ??= "";
+                app.TopDoubleClick ??= "";
+                app.TopHold        ??= "";
+                if (app.PenTipShortcut.Length == 0 && !string.IsNullOrEmpty(app.DrawShortcut))
+                    app.PenTipShortcut = app.DrawShortcut;
+                app.DrawShortcut = null;
+
+                app.ButtonTools ??= new List<string>();
+                app.ButtonTools.RemoveAll(string.IsNullOrWhiteSpace);
+                if (app.ButtonTools.Count > AppEntry.MaxButtonTools)
+                    app.ButtonTools.RemoveRange(AppEntry.MaxButtonTools, app.ButtonTools.Count - AppEntry.MaxButtonTools);
             }
             return loaded;
         }
