@@ -13,6 +13,12 @@ public static class Changelog
 
     public static readonly Release[] Releases =
     {
+        new("2.3.2", new Item[]
+        {
+            new("A new name: Slim Pen Tool",
+                "Slim Pen Haptics is now Slim Pen Tool, because it does a lot more than haptics these days. " +
+                "Only the name has changed: your settings, shortcuts and updates carry on as before."),
+        }),
         new("2.3.1", new Item[]
         {
             new("A tidier profile page",

@@ -23,7 +23,7 @@ foreach ($rid in 'win-x64', 'win-arm64') {
 
     # Each architecture is its own update channel, so an ARM install never pulls an Intel build.
     vpk pack --packId SlimPenHaptics --packVersion $Version --packDir $publishDir `
-        --mainExe SlimPenHaptics.exe --packTitle 'Slim Pen Haptics' --packAuthors 'stephenlwaldron' `
+        --mainExe SlimPenHaptics.exe --packTitle 'Slim Pen Tool' --packAuthors 'stephenlwaldron' `
         --icon (Join-Path $root 'assets\app.ico') --runtime $rid --channel $rid --outputDir $releases
     if ($LASTEXITCODE -ne 0) { throw "vpk pack failed for $rid" }
 }

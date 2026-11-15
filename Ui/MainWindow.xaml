@@ -1,7 +1,7 @@
 <Window x:Class="SlimPenHaptics.Ui.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Slim Pen Haptics"
+        Title="Slim Pen Tool"
         Icon="pack://application:,,,/assets/app.ico"
         Width="900" Height="640" MinWidth="760" MinHeight="520"
         WindowStartupLocation="CenterScreen">
@@ -132,7 +132,7 @@
                             <Button DockPanel.Dock="Right" Content="Got it" Padding="14,6" Margin="12,0,0,0"
                                     VerticalAlignment="Center" Click="WelcomeDismiss_Click" />
                             <StackPanel>
-                                <TextBlock Text="Slim Pen Haptics is running" Style="{StaticResource CardTitle}" />
+                                <TextBlock Text="Slim Pen Tool is running" Style="{StaticResource CardTitle}" />
                                 <TextBlock Style="{StaticResource CardHint}" Opacity="0.85"
                                            Text="It keeps working after you close this window. Look for the pen icon in the system tray next to the clock (click the ^ arrow if it's hidden), or open it again from the Start menu." />
                             </StackPanel>

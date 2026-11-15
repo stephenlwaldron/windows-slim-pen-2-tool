@@ -8,7 +8,7 @@
     <DockPanel Margin="24,18,24,18">
         <TextBlock x:Name="Heading" DockPanel.Dock="Top" FontSize="22" FontWeight="SemiBold" />
         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Opacity="0.7" Margin="0,4,0,14"
-                   Text="Slim Pen Haptics has been updated. Here is what changed." />
+                   Text="Slim Pen Tool has been updated. Here is what changed." />
 
         <DockPanel DockPanel.Dock="Bottom" Margin="0,16,0,0" LastChildFill="False">
             <Button DockPanel.Dock="Right" Content="Got it" Padding="22,6" IsDefault="True" IsCancel="True"

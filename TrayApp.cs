@@ -75,7 +75,7 @@ public sealed class TrayApp : IDisposable
         {
             Icon    = BuildIcon(active: false),
             Visible = true,
-            Text    = "Slim Pen Haptics",
+            Text    = "Slim Pen Tool",
         };
         _tray.ContextMenuStrip = BuildMenu();
         _tray.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) ShowWindow(); };
@@ -122,7 +122,7 @@ public sealed class TrayApp : IDisposable
         }
         else if (Settings.StartupNotification)
         {
-            _tray.ShowBalloonTip(4000, "Slim Pen Haptics is running",
+            _tray.ShowBalloonTip(4000, "Slim Pen Tool is running",
                 _haptic.IsConnected
                     ? "Pen connected. Click the pen icon in the tray for settings."
                     : "Pen not found yet. It will connect when the pen wakes up.",
@@ -227,9 +227,9 @@ public sealed class TrayApp : IDisposable
     {
         bool connected = _haptic.IsConnected;
         bool active    = connected && Settings.Enabled;
-        _tray.Text = !Settings.Enabled ? "Slim Pen Haptics — turned off"
-                   : connected         ? "Slim Pen Haptics — connected"
-                                       : "Slim Pen Haptics — pen asleep or not found";
+        _tray.Text = !Settings.Enabled ? "Slim Pen Tool — haptics turned off"
+                   : connected         ? "Slim Pen Tool — connected"
+                                       : "Slim Pen Tool — pen asleep or not found";
         if (active == _iconActive) return;
         _iconActive = active;
         if (Settings.Enabled) Log.Write(connected ? "pen link up" : "pen link down (asleep, docked or out of range)");
@@ -460,7 +460,7 @@ public sealed class TrayApp : IDisposable
     {
         var menu = new ContextMenuStrip();
 
-        var openItem = new ToolStripMenuItem("Open Slim Pen Haptics");
+        var openItem = new ToolStripMenuItem("Open Slim Pen Tool");
         openItem.Font = new Font(openItem.Font, FontStyle.Bold);
         openItem.Click += (_, _) => ShowWindow();
         menu.Items.Add(openItem);
