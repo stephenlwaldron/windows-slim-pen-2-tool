@@ -2,10 +2,10 @@
 
 **Surface Slim Pen 2 haptics only work in a handful of apps. This makes them work everywhere on Windows, and puts the pen's eraser end, side button and top button to work in any app.**
 
-The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else. Each app can have its own feel. The pen's other controls can press an app's keyboard shortcuts for you: flip it to erase, click the side button to step through your tools, and use the top button from anywhere in the room.
+The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app, **Slim Pen Tool** (formerly Slim Pen Haptics), talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else. Each app can have its own feel. The pen's other controls can press an app's keyboard shortcuts for you: flip it to erase, click the side button to step through your tools, and use the top button from anywhere in the room.
 
 <p align="center">
-  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Haptics window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, an Advanced button, and click on touch enabled with its own intensity slider. Above those are the Pen tip tool card and the optional Eraser shortcut, Side button tools and Top button cards, all switched off. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
+  <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Tool window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, an Advanced button, and click on touch enabled with its own intensity slider. Above those are the Pen tip tool card and the optional Eraser shortcut, Side button tools and Top button cards, all switched off. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
 </p>
 
 ## What you get
@@ -35,7 +35,7 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/whats-new.png" width="430" alt="The What's new window shown after updating to 2.3.1, listing A tidier profile page, Nothing greyed out, Clearer switches and A new home on GitHub, with a Got it button.">
+  <img src="assets/screenshots/whats-new.png" width="430" alt="The What's new window shown after updating from 2.3.0 to 2.3.2. Under Version 2.3.2: A new name, Slim Pen Tool. Under Version 2.3.1: A tidier profile page, Nothing greyed out, Clearer switches and A new home on GitHub. A Got it button closes it.">
 </p>
 
 ## Download and run
@@ -50,7 +50,7 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 All versions are on the [Releases](../../releases/latest) page. The other files listed there are used by the app's updater.
 
 1. Run the installer. The settings window opens to confirm it's running and show whether the pen was found.
-2. After that it lives in the system tray: a green pen icon means haptics are live, grey means the pen is asleep, docked or out of range. Click the icon, or open **Slim Pen Haptics** from the Start menu, to change settings.
+2. After that it lives in the system tray: a green pen icon means haptics are live, grey means the pen is asleep, docked or out of range. Click the icon, or open **Slim Pen Tool** from the Start menu, to change settings.
 
 **Windows will warn you the first time.** The files aren't code-signed, so SmartScreen shows "Windows protected your PC". Click **More info**, then **Run anyway**. The full source is in this repo if you'd rather build it yourself.
 
@@ -100,7 +100,7 @@ To build the installers, portable zips and update files for both architectures, 
 
 ```
 dotnet tool install -g vpk
-.\scripts\release.ps1 -Version 2.3.1
+.\scripts\release.ps1 -Version 2.3.2
 ```
 
 They are written to `artifacts\releases`. Adding `-Publish` also creates the GitHub release, which needs the `gh` command-line tool.
