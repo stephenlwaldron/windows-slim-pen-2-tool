@@ -13,6 +13,18 @@ public static class Changelog
 
     public static readonly Release[] Releases =
     {
+        new("2.3.1", new Item[]
+        {
+            new("A tidier profile page",
+                "Drag texture and its intensity now share one card, and so do click on touch and its intensity. " +
+                "The Advanced button and the response tuning it opens live inside the texture card."),
+            new("Nothing greyed out",
+                "When haptics are off for an app, the texture and click settings step out of the way instead of sitting there greyed out."),
+            new("Clearer switches",
+                "The boxes that switch on the eraser, side button and top button shortcuts have a brighter outline, so it is obvious they are there to be ticked."),
+            new("A new home on GitHub",
+                "The project is now called Windows Slim Pen 2 Tool. Updates keep arriving as before."),
+        }),
         new("2.3.0", new Item[]
         {
             new("Side button tools",

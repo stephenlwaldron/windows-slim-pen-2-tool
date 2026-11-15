@@ -9,7 +9,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>SlimPenHaptics</AssemblyName>
     <RootNamespace>SlimPenHaptics</RootNamespace>
-    <Version>2.3.0</Version>
+    <Version>2.3.1</Version>
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
     <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
     <!-- WPF0001: the built-in Fluent theme (ThemeMode) is still marked experimental in .NET 9 -->

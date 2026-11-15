@@ -196,8 +196,9 @@ public partial class MainWindow : Window
         TopHoldBox.Text           = ShortcutText(item.App?.TopHold);
         RefreshToolCards();
         AppEnabledBox.IsChecked   = item.App?.Enabled ?? true;
-        ProfileCards.IsEnabled    = item.App?.Enabled ?? true;
-        ProfileCards.Opacity      = ProfileCards.IsEnabled ? 1.0 : 0.45;
+        // With haptics off in an app there is nothing to tune, so the texture and click cards go away
+        // instead of sitting there greyed out.
+        ProfileCards.Visibility   = item.App?.Enabled ?? true ? Visibility.Visible : Visibility.Collapsed;
 
         var profile = Editing;
         TextureBox.SelectedIndex = Math.Max(0, Array.FindIndex(Settings.TextureChoices, c => c.Waveform == profile.Texture));

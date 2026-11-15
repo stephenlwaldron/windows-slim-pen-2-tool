@@ -45,6 +45,9 @@ Get-ChildItem $releases | Sort-Object Name | Format-Table Name, @{ n = 'MB'; e =
 if ($Publish) {
     # The updater reads releases.<channel>.json and the .nupkg files from the latest release.
     $files = Get-ChildItem $releases -File | Where-Object { $_.Name -match "^Install-|^Portable-|^releases\..*\.json$|-$([regex]::Escape($Version))-.*\.nupkg$" }
-    gh release create "v$Version" $files.FullName -R $repo --title "v$Version" --latest --notes $Notes
+    # Notes go through a file: quotation marks in them don't survive being passed as an argument.
+    $notesFile = Join-Path $releases "notes-$Version.md"
+    [IO.File]::WriteAllText($notesFile, $Notes)
+    gh release create "v$Version" $files.FullName -R $repo --title "v$Version" --latest --notes-file $notesFile
     if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }
 }

@@ -15,6 +15,21 @@
             <Setter Property="Padding" Value="18,14" />
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
+        <!-- The switch on an optional card. The card's text is dimmed while it is off, so the empty
+             box gets a bright outline to show it is the thing to click. -->
+        <Style x:Key="OptInBox" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Style.Resources>
+                <!-- The theme's own names for the outline of an empty box -->
+                <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUnchecked" Color="{DynamicResource TextFillColorPrimary}" />
+                <SolidColorBrush x:Key="CheckBoxCheckBackgroundStrokeUncheckedPointerOver" Color="{DynamicResource TextFillColorPrimary}" />
+            </Style.Resources>
+        </Style>
+        <!-- A hairline between two settings that share a card -->
+        <Style x:Key="CardDivider" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="0,14" />
+            <Setter Property="Background" Value="{DynamicResource CardStrokeColorDefaultBrush}" />
+        </Style>
         <!-- Sidebar rows: a soft rounded highlight instead of a solid selection block -->
         <Style x:Key="NavRow" TargetType="ListBoxItem">
             <Setter Property="Margin" Value="0,1" />
@@ -166,7 +181,7 @@
 
                         <Border Style="{StaticResource Card}">
                             <DockPanel>
-                                <CheckBox x:Name="EraserEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                <CheckBox x:Name="EraserEnabledBox" Style="{StaticResource OptInBox}" DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Margin="16,0,0,0" Click="EraserEnabledBox_Click" />
                                 <TextBox x:Name="EraserShortcutBox" DockPanel.Dock="Right" Width="150" Margin="16,0,0,0"
                                          VerticalAlignment="Center" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown"
@@ -182,12 +197,12 @@
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
-                                    <CheckBox x:Name="ButtonEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                    <CheckBox x:Name="ButtonEnabledBox" Style="{StaticResource OptInBox}" DockPanel.Dock="Right" VerticalAlignment="Center"
                                               Margin="16,0,0,0" Click="ButtonEnabledBox_Click" />
                                     <StackPanel x:Name="ButtonText">
                                         <TextBlock Text="Side button tools" Style="{StaticResource CardTitle}" />
                                         <TextBlock Style="{StaticResource CardHint}"
-                                                   Text="Optional. Click the pen's side button while it hovers over the app to switch to the next tool here. After the last one, another click goes back to the pen tip tool." />
+                                                   Text="Optional. Click the pen's side button while it hovers over or draws in the app to switch to the next tool here. After the last one, another click goes back to the pen tip tool." />
                                     </StackPanel>
                                 </DockPanel>
                                 <!-- Filled in by RebuildButtonChain: pen tip, then a box per tool, then + -->
@@ -198,7 +213,7 @@
                         <Border Style="{StaticResource Card}">
                             <StackPanel>
                                 <DockPanel>
-                                    <CheckBox x:Name="TopEnabledBox" DockPanel.Dock="Right" VerticalAlignment="Center"
+                                    <CheckBox x:Name="TopEnabledBox" Style="{StaticResource OptInBox}" DockPanel.Dock="Right" VerticalAlignment="Center"
                                               Margin="16,0,0,0" Click="TopEnabledBox_Click" />
                                     <StackPanel x:Name="TopText">
                                         <TextBlock Text="Top button" Style="{StaticResource CardTitle}" />
@@ -227,7 +242,9 @@
                     </StackPanel>
 
                     <StackPanel x:Name="ProfileCards">
+                        <!-- The texture and how strong it is, as one group -->
                         <Border Style="{StaticResource Card}">
+                            <StackPanel>
                             <DockPanel>
                                 <Button x:Name="ConfirmTextureButton" DockPanel.Dock="Right" Content="Confirm" Padding="14,6"
                                         Margin="8,0,0,0" VerticalAlignment="Center" Click="ConfirmTextureButton_Click"
@@ -240,9 +257,7 @@
                                                Text="What you feel while the pen moves. Confirm to set." />
                                 </StackPanel>
                             </DockPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource Card}">
+                            <Border Style="{StaticResource CardDivider}" />
                             <DockPanel>
                                 <TextBlock x:Name="IntensityText" DockPanel.Dock="Right" Width="110" TextAlignment="Right"
                                            VerticalAlignment="Center" />
@@ -255,14 +270,13 @@
                                                Text="Stronger with faster, firmer strokes. 0% turns it off." />
                                 </StackPanel>
                             </DockPanel>
-                        </Border>
 
-                        <!-- Hidden until asked for: most people never need to tune the response -->
-                        <Button x:Name="AdvancedButton" Content="Advanced" Padding="14,6" Margin="0,0,0,8"
-                                HorizontalAlignment="Right" Click="AdvancedButton_Click" />
+                            <!-- Hidden until asked for: most people never need to tune the response -->
+                            <Button x:Name="AdvancedButton" Content="Advanced" Padding="14,6" Margin="0,12,0,0"
+                                    HorizontalAlignment="Right" Click="AdvancedButton_Click" />
 
-                        <Border x:Name="ResponsePanel" Style="{StaticResource Card}" Visibility="Collapsed">
-                            <StackPanel>
+                            <StackPanel x:Name="ResponsePanel" Visibility="Collapsed">
+                            <Border Style="{StaticResource CardDivider}" />
                             <TextBlock Text="How the texture responds to your stroke" Style="{StaticResource CardTitle}" Margin="0,0,0,12" />
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -319,9 +333,12 @@
                                 </StackPanel>
                             </Grid>
                             </StackPanel>
+                            </StackPanel>
                         </Border>
 
+                        <!-- The click and how strong it is, as one group -->
                         <Border Style="{StaticResource Card}">
+                            <StackPanel>
                             <DockPanel>
                                 <CheckBox x:Name="TouchClickBox" DockPanel.Dock="Right" VerticalAlignment="Center"
                                           Margin="16,0,0,0" Click="TouchClickBox_Click" />
@@ -334,10 +351,8 @@
                                                Text="A small click each time the tip touches down and lifts. Confirm to set." />
                                 </StackPanel>
                             </DockPanel>
-                        </Border>
-
-                        <Border x:Name="ClickIntensityCard" Style="{StaticResource Card}">
-                            <DockPanel>
+                            <Border Style="{StaticResource CardDivider}" />
+                            <DockPanel x:Name="ClickIntensityCard">
                                 <TextBlock x:Name="ClickIntensityText" DockPanel.Dock="Right" Width="110" TextAlignment="Right"
                                            VerticalAlignment="Center" />
                                 <Slider x:Name="ClickIntensitySlider" DockPanel.Dock="Right" Width="200" Margin="16,0,0,0" Minimum="0" Maximum="100"
@@ -349,6 +364,7 @@
                                                Text="How strong the click is, separate from the texture." />
                                 </StackPanel>
                             </DockPanel>
+                            </StackPanel>
                         </Border>
                     </StackPanel>
 
