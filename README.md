@@ -33,13 +33,14 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 
 ## Download and run
 
-Get the latest files from [Releases](../../releases/latest).
+**[Download the installer](../../releases/latest/download/Install-SlimPenHaptics-Intel-AMD.exe)** for Intel and AMD Surfaces. This is the one most people want: it adds a Start menu entry and updates itself.
 
-| File | For |
+| Other downloads | For |
 | --- | --- |
-| `SlimPenHaptics-win-x64-Setup.exe` | **Recommended.** Installer for Intel and AMD Surfaces. Adds a Start menu entry and updates itself. |
-| `SlimPenHaptics-win-arm64-Setup.exe` | Installer for Snapdragon (ARM) Surfaces. **Untested**: please [report](../../issues) how it goes. The x64 installer also runs on ARM through Windows' emulation. |
-| `SlimPenHaptics-win-x64-Portable.zip`, `SlimPenHaptics-win-arm64-Portable.zip` | No install: unzip and run. Doesn't update itself. |
+| [Install-SlimPenHaptics-Snapdragon.exe](../../releases/latest/download/Install-SlimPenHaptics-Snapdragon.exe) | Installer for Snapdragon (ARM) Surfaces. **Untested**: please [report](../../issues) how it goes. The Intel and AMD installer also runs on ARM through Windows' emulation. |
+| [Portable-SlimPenHaptics-Intel-AMD.zip](../../releases/latest/download/Portable-SlimPenHaptics-Intel-AMD.zip), [Portable-SlimPenHaptics-Snapdragon.zip](../../releases/latest/download/Portable-SlimPenHaptics-Snapdragon.zip) | No install: unzip and run. Doesn't update itself. |
+
+All versions are on the [Releases](../../releases/latest) page. The other files listed there are used by the app's updater.
 
 1. Run the installer. The settings window opens to confirm it's running and show whether the pen was found.
 2. After that it lives in the system tray: a green pen icon means haptics are live, grey means the pen is asleep, docked or out of range. Click the icon, or open **Slim Pen Haptics** from the Start menu, to change settings.

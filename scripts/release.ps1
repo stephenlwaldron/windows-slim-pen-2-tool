@@ -28,11 +28,23 @@ foreach ($rid in 'win-x64', 'win-arm64') {
     if ($LASTEXITCODE -ne 0) { throw "vpk pack failed for $rid" }
 }
 
+# GitHub lists a release's files alphabetically. Give the files people should pick names that
+# sort ahead of the updater's files, and that say which Surface they are for.
+$downloads = @{
+    'SlimPenHaptics-win-x64-Setup.exe'      = 'Install-SlimPenHaptics-Intel-AMD.exe'
+    'SlimPenHaptics-win-arm64-Setup.exe'    = 'Install-SlimPenHaptics-Snapdragon.exe'
+    'SlimPenHaptics-win-x64-Portable.zip'   = 'Portable-SlimPenHaptics-Intel-AMD.zip'
+    'SlimPenHaptics-win-arm64-Portable.zip' = 'Portable-SlimPenHaptics-Snapdragon.zip'
+}
+foreach ($name in $downloads.Keys) {
+    Move-Item (Join-Path $releases $name) (Join-Path $releases $downloads[$name]) -Force
+}
+
 Get-ChildItem $releases | Sort-Object Name | Format-Table Name, @{ n = 'MB'; e = { '{0:n1}' -f ($_.Length / 1MB) } }
 
 if ($Publish) {
     # The updater reads releases.<channel>.json and the .nupkg files from the latest release.
-    $files = Get-ChildItem $releases -File | Where-Object { $_.Name -match "Setup\.exe$|Portable\.zip$|^releases\..*\.json$|-$([regex]::Escape($Version))-.*\.nupkg$" }
+    $files = Get-ChildItem $releases -File | Where-Object { $_.Name -match "^Install-|^Portable-|^releases\..*\.json$|-$([regex]::Escape($Version))-.*\.nupkg$" }
     gh release create "v$Version" $files.FullName -R $repo --title "v$Version" --latest --notes $Notes
     if ($LASTEXITCODE -ne 0) { throw 'gh release create failed' }
 }
