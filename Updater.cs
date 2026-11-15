@@ -10,7 +10,7 @@ namespace SlimPenHaptics;
 // time the app starts; the portable copy has no installer to update, so it only reports.
 public class Updater
 {
-    private const string RepoUrl = "https://github.com/stephenlwaldron/windows-slim-pen-haptics-unlocked";
+    private const string RepoUrl = "https://github.com/stephenlwaldron/windows-slim-pen-2-tool";
 
     private UpdateManager? _manager;
     private UpdateInfo?    _ready;

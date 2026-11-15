@@ -11,7 +11,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root     = Split-Path $PSScriptRoot
 $releases = Join-Path $root 'artifacts\releases'
-$repo     = 'stephenlwaldron/windows-slim-pen-haptics-unlocked'
+$repo     = 'stephenlwaldron/windows-slim-pen-2-tool'
 
 foreach ($rid in 'win-x64', 'win-arm64') {
     $publishDir = Join-Path $root "artifacts\publish\$rid"

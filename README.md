@@ -1,4 +1,4 @@
-# windows-slim-pen-haptics-unlocked
+# Windows Slim Pen 2 Tool
 
 **Surface Slim Pen 2 haptics only work in a handful of apps. This makes them work everywhere on Windows, and puts the pen's eraser end, side button and top button to work in any app.**
 
@@ -89,8 +89,8 @@ You need Windows and the [.NET 9 SDK](https://dotnet.microsoft.com/download/dotn
 Build and run it:
 
 ```
-git clone https://github.com/stephenlwaldron/windows-slim-pen-haptics-unlocked
-cd windows-slim-pen-haptics-unlocked
+git clone https://github.com/stephenlwaldron/windows-slim-pen-2-tool
+cd windows-slim-pen-2-tool
 dotnet run -c Release -r win-x64
 ```
 

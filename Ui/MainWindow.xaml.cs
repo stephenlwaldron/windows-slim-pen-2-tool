@@ -628,7 +628,7 @@ public partial class MainWindow : Window
         Open(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "SlimPenHaptics"));
 
     private void GitHub_Click(object sender, RoutedEventArgs e) =>
-        Open("https://github.com/stephenlwaldron/windows-slim-pen-haptics-unlocked");
+        Open("https://github.com/stephenlwaldron/windows-slim-pen-2-tool");
 
     private static void Open(string target)
     {
