@@ -1,8 +1,8 @@
-# Windows Slim Pen 2 Tool
+# Slim Pen Tool
 
-**Unlock Surface Slim Pen 2 haptics in every Windows app, and remap the pen's side button, top button and eraser end.**
+**A Windows utility for the Surface Slim Pen 2: unlock haptics in every app, and remap the pen's side button, top button and eraser end.**
 
-Slim Pen Tool is a free, open-source Surface Slim Pen 2 utility for Windows 10 and 11.
+Slim Pen Tool is free and open source, for Windows 10 and 11.
 
 Surface Slim Pen 2 haptics only work in a handful of apps, and Windows gives you almost no say over the pen's buttons. This tray app, **Slim Pen Tool** (formerly Slim Pen Haptics), talks to the pen directly to fix both.
 
