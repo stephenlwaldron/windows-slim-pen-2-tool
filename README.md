@@ -1,8 +1,11 @@
 # Windows Slim Pen 2 Tool
 
-**Surface Slim Pen 2 haptics only work in a handful of apps. This makes them work everywhere on Windows, and puts the pen's eraser end, side button and top button to work in any app.**
+**Slim Pen Tool is a free, open-source Surface Slim Pen 2 utility for Windows: haptic feedback in every app, side button and top button remapping, eraser shortcuts, and per-app pen profiles.**
 
-The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but Windows only lets approved apps use it. This tray app, **Slim Pen Tool** (formerly Slim Pen Haptics), talks to the pen directly, so you get that feel in Clip Studio, Krita, OneNote, your browser, the desktop, or anything else. Each app can have its own feel. The pen's other controls can press an app's keyboard shortcuts for you: flip it to erase, click the side button to step through your tools, and use the top button from anywhere in the room.
+Surface Slim Pen 2 haptics only work in a handful of apps, and Windows gives you almost no say over the pen's buttons. This tray app, **Slim Pen Tool** (formerly Slim Pen Haptics), talks to the pen directly to fix both:
+
+- **Haptics everywhere:** the pen-on-paper feel in Clip Studio Paint, Krita, OneNote, your browser, the desktop, or anything else, with its own texture and strength per app.
+- **Pen button remapping:** the side button, the top button and the eraser end can each press an app's keyboard shortcuts for you. Flip the pen to erase, click the side button to step through your tools, and use the top button from anywhere in the room.
 
 <p align="center">
   <img src="assets/screenshots/app-profile.png" width="760" alt="The Slim Pen Tool window showing a profile for Microsoft OneNote: haptics on, Ink texture with a Confirm button, texture intensity at 60%, an Advanced button, and click on touch enabled with its own intensity slider. Above those are the Pen tip tool card and the optional Eraser shortcut, Side button tools and Top button cards, all switched off. The sidebar lists Default, Adobe Illustrator with haptics off, and Microsoft OneNote.">
@@ -10,15 +13,23 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 
 ## What you get
 
+### Haptic feedback in any app
+
 - **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Confirm** to feel it on the pen without drawing.
 - **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack); the texture and click settings then step out of the way. The app switches automatically based on where you're drawing.
 - **Response tuning:** under Advanced, set how sensitive the texture is to stroke speed, how strong the slowest stroke feels, and how much pressure adds, with a live graph of the result. Each profile has its own.
+- **Click on touch (optional):** a click when the tip touches down and lifts, with its own intensity slider. Off by default.
+- **Intensity:** 0% to 100%, 80% by default, set separately for the texture and the click. Turn the Default profile down to 0% if you only want haptics in the apps you list.
+
+### Pen button remapping and shortcuts
+
 - **Pen tip tool:** tell each app's profile the shortcut of the tool you normally draw with, and the eraser and side button below know where to return to.
 - **Eraser shortcut:** for apps that ignore the pen's eraser end, flipping the pen presses that app's eraser shortcut for you, and flipping back returns to the tool you were on. Optional, set per app, and switched on with a checkbox.
 - **Side button tools:** click the pen's side button while it hovers over or draws in an app to switch to another tool by its shortcut. Add up to 10 tools with **+**; each click moves to the next, and after the last one it loops back to the pen tip tool. Optional, set per app.
 - **Top button shortcuts:** the button on the end of the pen works over Bluetooth, so it reaches your PC from anywhere. Give its click, double-click and hold each a shortcut per app; while that app is in front the shortcut is pressed instead of what Windows has assigned. Optional, and gestures you leave unset stay with Windows.
-- **Click on touch (optional):** a click when the tip touches down and lifts, with its own intensity slider. Off by default.
-- **Intensity:** 0% to 100%, 80% by default, set separately for the texture and the click. Turn the Default profile down to 0% if you only want haptics in the apps you list.
+
+### And the rest
+
 - **Automatic updates** when installed, and it remembers your settings. After an update, a **What's new** window tells you what changed.
 - A settings window in the Windows 11 style, with light and dark mode.
 
