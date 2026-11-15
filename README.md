@@ -11,7 +11,7 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 ## What you get
 
 - **Drag texture:** a continuous vibration while the pen moves, stronger with stroke speed and pressure, quiet when the pen rests. Choose Ink, Pencil, Marker or Brush, and press **Confirm** to feel it on the pen without drawing.
-- **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack). The app switches automatically based on where you're drawing.
+- **Per-app profiles:** give any app its own texture and intensity, or turn haptics off in apps that already have their own (so the two don't stack); the texture and click settings then step out of the way. The app switches automatically based on where you're drawing.
 - **Response tuning:** under Advanced, set how sensitive the texture is to stroke speed, how strong the slowest stroke feels, and how much pressure adds, with a live graph of the result. Each profile has its own.
 - **Pen tip tool:** tell each app's profile the shortcut of the tool you normally draw with, and the eraser and side button below know where to return to.
 - **Eraser shortcut:** for apps that ignore the pen's eraser end, flipping the pen presses that app's eraser shortcut for you, and flipping back returns to the tool you were on. Optional, set per app, and switched on with a checkbox.
@@ -23,19 +23,19 @@ The Slim Pen 2 has a haptic motor that makes drawing feel like pen on paper, but
 - A settings window in the Windows 11 style, with light and dark mode.
 
 <p align="center">
-  <img src="assets/screenshots/default-profile.png" width="760" alt="The Default profile: Pencil texture, intensity at 80%, click on touch off. It applies to every app without its own profile.">
+  <img src="assets/screenshots/default-profile.png" width="760" alt="The Default profile: one card with Pencil texture, intensity at 80% and an Advanced button, and one card with click on touch off. It applies to every app without its own profile.">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/pen-tools.png" width="760" alt="The Adobe Illustrator profile with haptics off and all the pen shortcuts set up. Pen tip tool is B. Eraser shortcut is on, set to Shift+E. Side button tools is on, with a loop running from Pen tip B to N, P and Shift+B, each with a red remove button, and a green plus button to add another. Top button is on, with Click set to Ctrl+Z, Double-click to Ctrl+Shift+Z and Hold to H.">
+  <img src="assets/screenshots/pen-tools.png" width="760" alt="The Adobe Illustrator profile with haptics off, so only the pen shortcuts show, all set up. Pen tip tool is B. Eraser shortcut is on, set to Shift+E. Side button tools is on, with a loop running from Pen tip B to N, P and Shift+B, each with a red remove button, and a green plus button to add another. Top button is on, with Click set to Ctrl+Z, Double-click to Ctrl+Shift+Z and Hold to H.">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/response-tuning.png" width="760" alt="The Advanced section open on the Default profile: sliders for Sensitivity, Minimum strength and Pressure effect, each at 50%, beside a graph of strength against stroke speed with one line for a firm press and one for a light press.">
+  <img src="assets/screenshots/response-tuning.png" width="760" alt="The Advanced section open inside the texture card on the Default profile: sliders for Sensitivity, Minimum strength and Pressure effect, each at 50%, beside a graph of strength against stroke speed with one line for a firm press and one for a light press.">
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/whats-new.png" width="430" alt="The What's new window shown after updating to 2.3.0, listing Side button tools, Top button shortcuts, Pen tip tool, Tidier eraser shortcut and the What's new window itself, with a Got it button.">
+  <img src="assets/screenshots/whats-new.png" width="430" alt="The What's new window shown after updating to 2.3.1, listing A tidier profile page, Nothing greyed out, Clearer switches and A new home on GitHub, with a Got it button.">
 </p>
 
 ## Download and run
@@ -100,7 +100,7 @@ To build the installers, portable zips and update files for both architectures, 
 
 ```
 dotnet tool install -g vpk
-.\scripts\release.ps1 -Version 2.3.0
+.\scripts\release.ps1 -Version 2.3.1
 ```
 
 They are written to `artifacts\releases`. Adding `-Publish` also creates the GitHub release, which needs the `gh` command-line tool.
