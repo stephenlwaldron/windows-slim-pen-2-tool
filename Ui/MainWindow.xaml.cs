@@ -190,6 +190,7 @@ public partial class MainWindow : Window
         ButtonEnabledBox.IsChecked = item.App?.ButtonEnabled ?? false;
         PenTipShortcutBox.Text    = ShortcutText(item.App?.PenTipShortcut);
         EraserShortcutBox.Text    = ShortcutText(item.App?.EraserShortcut);
+        TipOnArrivalBox.IsChecked = item.App?.TipOnArrival ?? false;
         TopEnabledBox.IsChecked   = item.App?.TopEnabled ?? false;
         TopClickBox.Text          = ShortcutText(item.App?.TopClick);
         TopDoubleClickBox.Text    = ShortcutText(item.App?.TopDoubleClick);
@@ -318,6 +319,13 @@ public partial class MainWindow : Window
         if (_loading || _editingApp == null) return;
         _editingApp.ButtonEnabled = ButtonEnabledBox.IsChecked == true;
         RefreshToolCards();
+        _app.SettingsChanged();
+    }
+
+    private void TipOnArrivalBox_Click(object sender, RoutedEventArgs e)
+    {
+        if (_loading || _editingApp == null) return;
+        _editingApp.TipOnArrival = TipOnArrivalBox.IsChecked == true;
         _app.SettingsChanged();
     }
 

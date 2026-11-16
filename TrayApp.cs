@@ -20,6 +20,8 @@ public sealed class TrayApp : IDisposable
 
     private readonly System.Windows.Forms.Timer _reconnectTimer;
     private readonly System.Windows.Forms.Timer _previewTimer;
+    private readonly System.Windows.Forms.Timer _arrivalTimer;
+    private const int ArrivalSettleMs = 80;
     private bool _iconActive;
     private bool _disposed;
 
@@ -89,6 +91,12 @@ public sealed class TrayApp : IDisposable
         _monitor.PenMove += OnPenMove;
         _monitor.EraserEnd += OnEraserEnd;
         _monitor.SideButton += OnSideButton;
+        _monitor.PenArrived += OnPenArrived;
+
+        // The pointer catches up with the pen a moment after its first report, so look up the
+        // app under it a little later.
+        _arrivalTimer = new System.Windows.Forms.Timer { Interval = ArrivalSettleMs };
+        _arrivalTimer.Tick += (_, _) => { _arrivalTimer.Stop(); ApplyTipOnArrival(); };
 
         _topButton.Pressed = OnTopButton;
         _topButton.Enabled = Settings.Apps.Exists(a => a.UsesTopButton);
@@ -321,6 +329,27 @@ public sealed class TrayApp : IDisposable
             KeySender.Send(tool);
             Log.Write($"tip over {exe}: sent {KeySender.Display(tool)}");
         }
+    }
+
+    private void OnPenArrived()
+    {
+        _arrivalTimer.Stop();
+        _arrivalTimer.Start();
+    }
+
+    // The pen has come back to the screen: put the app on the tool the tip should be using, which
+    // is the pen tip tool or wherever the side button's loop has got to. Same focus rule as the rest.
+    private void ApplyTipOnArrival()
+    {
+        string? under = AppResolver.ExeUnderPen();
+        string? exe   = under == null ? null : Path.GetFileName(under);
+        var app = Settings.FindApp(exe);
+        if (app == null || !app.TipOnArrival || !IsForeground(exe)) return;
+
+        string tool = CurrentTool(app);
+        if (string.IsNullOrEmpty(tool)) return;
+        KeySender.Send(tool);
+        Log.Write($"pen came to {exe}: sent {KeySender.Display(tool)}");
     }
 
     // The shortcut of the tool the tip is on in this app, as far as the side button knows.
@@ -578,6 +607,7 @@ public sealed class TrayApp : IDisposable
         _disposed = true;
         _reconnectTimer.Stop();
         _previewTimer.Stop();
+        _arrivalTimer.Stop();
         _window?.Close();
         _monitor.Dispose();
         _topButton.Dispose();

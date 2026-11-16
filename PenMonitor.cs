@@ -21,6 +21,9 @@ public class PenMonitor : NativeWindow, IDisposable
     // Fired each time the side button is pressed, hovering or drawing.
     public event Action? SideButton;
 
+    // Fired when the tip comes into range of the screen after being away from it.
+    public event Action? PenArrived;
+
     // Fired for each report while the tip is down:
     // speed (screen px/s, smoothed), pressure (0..1), travel since pen-down (px).
     public event Action<double, double, double>? PenMove;
@@ -33,6 +36,11 @@ public class PenMonitor : NativeWindow, IDisposable
     private double _buttonSeenAt;
 
     private const double ButtonMaxGapSeconds  = 0.25;   // reports stopped: the pen left the screen mid-press
+
+    // The digitizer reports continuously while the pen is in range, so a gap this long means it
+    // was taken away. Long enough that skimming the edge of hover range between strokes doesn't count.
+    private const double ArrivalGapSeconds = 0.6;
+    private double _lastReportAt = double.NegativeInfinity;
 
     // Per-device parse data, built on the first report from that device.
     private sealed class PenDevice
@@ -228,6 +236,11 @@ public class PenMonitor : NativeWindow, IDisposable
             }
 
             TrackButton(buttonNow, eraserNow);
+
+            double reportAt = _clock.Elapsed.TotalSeconds;
+            bool arrived = reportAt - _lastReportAt > ArrivalGapSeconds;
+            _lastReportAt = reportAt;
+            if (arrived && !eraserNow) PenArrived?.Invoke();
 
             if (eraserNow != _eraserEnd)
             {

@@ -167,6 +167,7 @@
                     <!-- Not haptics, so it stays usable when haptics are off in the app -->
                     <StackPanel x:Name="ToolCards">
                         <Border Style="{StaticResource Card}">
+                            <StackPanel>
                             <DockPanel>
                                 <TextBox x:Name="PenTipShortcutBox" DockPanel.Dock="Right" Width="150" Margin="16,0,0,0"
                                          VerticalAlignment="Center" IsReadOnly="True" PreviewKeyDown="ShortcutBox_PreviewKeyDown"
@@ -177,6 +178,10 @@
                                                Text="The app's shortcut for the tool you normally draw with. The eraser and the side button below come back to it." />
                                 </StackPanel>
                             </DockPanel>
+                            <CheckBox x:Name="TipOnArrivalBox" Margin="0,12,0,0" Click="TipOnArrivalBox_Click"
+                                      Content="Switch to it whenever the pen comes to the screen"
+                                      ToolTip="Each time you bring the pen to this app, its tool is selected before you draw. It replaces any tool you picked with the mouse or keyboard in between." />
+                            </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource Card}">

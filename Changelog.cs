@@ -13,6 +13,13 @@ public static class Changelog
 
     public static readonly Release[] Releases =
     {
+        new("2.3.3", new Item[]
+        {
+            new("Pen tip tool when the pen arrives",
+                "A new option under Pen tip tool selects that tool every time you bring the pen to the app, so your first stroke always uses it, " +
+                "even if you picked something else with the mouse in between. With side button tools on, it picks the one the side button last chose. " +
+                "Off by default, set per app."),
+        }),
         new("2.3.2", new Item[]
         {
             new("A new name: Slim Pen Tool",

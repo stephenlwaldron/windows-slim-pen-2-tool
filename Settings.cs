@@ -59,6 +59,10 @@ public class AppEntry
     // The tool the user normally draws with. The eraser and the side button both return to it.
     public string PenTipShortcut { get; set; } = "";
 
+    // Also press the tip's tool each time the pen comes to the screen, so the first stroke uses it
+    // even if something else was chosen in between. Off by default: it overrides tools picked by hand.
+    public bool TipOnArrival { get; set; }
+
     public bool   EraserEnabled  { get; set; }          // off until the user opts in
     public string EraserShortcut { get; set; } = "";    // on flipping to the eraser end
 
