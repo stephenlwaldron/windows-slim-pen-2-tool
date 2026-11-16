@@ -29,7 +29,7 @@ Windows only lets approved apps drive the pen's haptic motor. Slim Pen Tool send
 
 Each of the pen's controls can press a keyboard shortcut in the app you're using, set per app.
 
-- **Pen tip tool:** tell each app's profile the shortcut of the tool you normally draw with, and the eraser and side button below know where to return to.
+- **Pen tip tool:** tell each app's profile the shortcut of the tool you normally draw with, and the eraser and side button below know where to return to. Optionally, it switches to that tool every time you bring the pen to the screen, so the first stroke always uses it.
 - **Eraser shortcut:** for apps that ignore the pen's eraser end, flipping the pen presses that app's eraser shortcut for you, and flipping back returns to the tool you were on. Optional, set per app, and switched on with a checkbox.
 - **Side button tools:** click the pen's side button while it hovers over or draws in an app to switch to another tool by its shortcut. Add up to 10 tools with **+**; each click moves to the next, and after the last one it loops back to the pen tip tool. Optional, set per app.
 - **Top button shortcuts:** the button on the end of the pen works over Bluetooth, so it reaches your PC from anywhere. Give its click, double-click and hold each a shortcut per app; while that app is in front the shortcut is pressed instead of what Windows has assigned. Optional, and gestures you leave unset stay with Windows.
@@ -44,7 +44,7 @@ Each of the pen's controls can press a keyboard shortcut in the app you're using
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/pen-tools.png" width="760" alt="The Adobe Illustrator profile with haptics off, so only the pen shortcuts show, all set up. Pen tip tool is B. Eraser shortcut is on, set to Shift+E. Side button tools is on, with a loop running from Pen tip B to N, P and Shift+B, each with a red remove button, and a green plus button to add another. Top button is on, with Click set to Ctrl+Z, Double-click to Ctrl+Shift+Z and Hold to H.">
+  <img src="assets/screenshots/pen-tools.png" width="760" alt="The Adobe Illustrator profile with haptics off, so only the pen shortcuts show, all set up. Pen tip tool is B, with Switch to it whenever the pen comes to the screen ticked. Eraser shortcut is on, set to Shift+E. Side button tools is on, with a loop running from Pen tip B to N, P and Shift+B, each with a red remove button, and a green plus button to add another. Top button is on, with Click set to Ctrl+Z, Double-click to Ctrl+Shift+Z and Hold to H.">
 </p>
 
 <p align="center">
@@ -52,7 +52,7 @@ Each of the pen's controls can press a keyboard shortcut in the app you're using
 </p>
 
 <p align="center">
-  <img src="assets/screenshots/whats-new.png" width="430" alt="The What's new window shown after updating from 2.3.0 to 2.3.2. Under Version 2.3.2: A new name, Slim Pen Tool. Under Version 2.3.1: A tidier profile page, Nothing greyed out, Clearer switches and A new home on GitHub. A Got it button closes it.">
+  <img src="assets/screenshots/whats-new.png" width="430" alt="The What's new window shown after updating from 2.3.1 to 2.3.3. Under Version 2.3.3: Pen tip tool when the pen arrives. Under Version 2.3.2: A new name, Slim Pen Tool. A Got it button closes it.">
 </p>
 
 ## Download and install
@@ -126,7 +126,7 @@ To build the installers, portable zips and update files for both architectures, 
 
 ```
 dotnet tool install -g vpk
-.\scripts\release.ps1 -Version 2.3.2
+.\scripts\release.ps1 -Version 2.3.3
 ```
 
 They are written to `artifacts\releases`. Adding `-Publish` also creates the GitHub release, which needs the `gh` command-line tool.
