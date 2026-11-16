@@ -106,7 +106,6 @@ The pen's haptic commands were first worked out by [zeroxoneafour/slimpend](http
 ## Related projects
 
 - [Haptics Everywhere](https://github.com/shanselman/haptic-outside-labs) by Scott Hanselman adds haptic ticks to buttons, tabs, menus and sliders in any app, for the Surface haptic mouse and haptic touchpads. It covers the UI; Slim Pen Tool covers drawing and the pen's buttons.
-- [slimpend](https://github.com/zeroxoneafour/slimpend), the Linux project that first worked out the pen's haptic commands.
 
 ## Build from source
 
